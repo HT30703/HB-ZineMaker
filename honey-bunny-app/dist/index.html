@@ -268,6 +268,9 @@
   .cover-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform-origin:center center;cursor:grab;z-index:0;touch-action:none;}
   .cover-bg.fit{object-fit:contain;cursor:default;}
   .coverwrap.panning .cover-bg{cursor:grabbing;}
+  /* always-reliable add-photo chip on an empty cover (back cover's QR+name cover most of the wrap) */
+  .add-photo-chip{position:absolute;top:6px;left:6px;z-index:6;display:flex;align-items:center;gap:5px;font-family:inherit;font-size:10px;letter-spacing:1px;text-transform:uppercase;font-weight:bold;padding:6px 10px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer;border-radius:3px;box-shadow:2px 2px 0 var(--shadow);}
+  .add-photo-chip:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
 
   .dwrap{position:absolute;z-index:2;transform-origin:center center;}
   .dwrap.qr{touch-action:none;}
@@ -837,10 +840,8 @@ function qrGroup(t){
   return grp("QR link",inp);
 }
 function photoGroup(t){
-  const add=document.createElement("label"); add.className="ins-btn"; add.textContent=t.bg?"Replace photo":"Add photo";
-  const fi=document.createElement("input"); fi.type="file"; fi.accept="image/*"; fi.style.display="none";
-  fi.onchange=(e)=>loadImg(e.target.files[0],(entry)=>{ t.bg=entry; save(); renderEditor(); });
-  add.appendChild(fi);
+  const add=document.createElement("button"); add.className="ins-btn"; add.textContent=t.bg?"Replace photo":"Add photo";
+  add.onclick=()=>openFilePicker((f)=>loadImg(f,(entry)=>{ t.bg=entry; save(); renderEditor(); }));
   const nodes=[add];
   if(t.bg){
     const reset=document.createElement("button"); reset.className="ins-btn"; reset.textContent="Reset position"; reset.onclick=()=>{ t.bg.ox=50;t.bg.oy=50;t.bg.scale=1; save(); renderEditor(); };
@@ -948,10 +949,55 @@ function makeDraggable(el, container, pos, selId, dragWhole){
 }
 
 /* ---------------- images ---------------- */
+/* ONE persistent, app-level file input (web fallback). Created once and never removed, so a
+   re-render between opening the picker and the async 'change' can't destroy it. */
+var _picker=null, _pickerCb=null;
+function ensurePicker(){
+  if(_picker) return _picker;
+  _picker=document.createElement("input"); _picker.type="file"; _picker.accept="image/*";
+  _picker.style.cssText="position:fixed;left:-9999px;width:1px;height:1px;opacity:0;";
+  _picker.addEventListener("change",(ev)=>{ const f=ev.target.files&&ev.target.files[0]; const cb=_pickerCb; _pickerCb=null; try{ _picker.value=""; }catch(_){} if(f&&cb) cb(f); });
+  document.body.appendChild(_picker);
+  return _picker;
+}
+/* In the packaged Mac app the HTML <input type=file> change event is unreliable in the WebView
+   (picker opens, file never arrives). When running inside Tauri, use its NATIVE dialog + fs to
+   pick and read the file, then hand loadImg a real File built from the bytes. On the web, fall
+   back to the persistent hidden input. */
+function isTauri(){ return !!(window.__TAURI__ && window.__TAURI__.dialog && window.__TAURI__.fs); }
+async function tauriPick(cb){
+  try{
+    const T=window.__TAURI__;
+    const sel=await T.dialog.open({ multiple:false, directory:false, filters:[{name:"Images",extensions:["jpg","jpeg","png","gif","webp","bmp","heic","heif","avif","tif","tiff"]}] });
+    if(!sel) return;                                  // cancelled
+    const path=Array.isArray(sel)?sel[0]:sel;
+    const bytes=await T.fs.readFile(path);            // Uint8Array
+    const name=(""+path).split(/[\\/]/).pop()||"image";
+    const ext=(name.split(".").pop()||"").toLowerCase();
+    const mime = ext==="png"?"image/png": (ext==="gif"?"image/gif": (ext==="webp"?"image/webp": (ext==="bmp"?"image/bmp":"image/jpeg")));
+    const file=new File([bytes], name, {type:mime});  // real File -> loadImg works unchanged
+    cb(file);
+  }catch(e){ console.error("tauri pick failed",e); toast("Couldn't open that image"); }
+}
+function openFilePicker(cb){ if(isTauri()){ tauriPick(cb); return; } const p=ensurePicker(); _pickerCb=cb; p.click(); }
 function loadImg(file,cb){
-  if(!file||!file.type||!file.type.startsWith("image/")) return;
+  if(!file) return;
+  // Don't hard-gate on file.type — the desktop (Tauri) WebView often reports an EMPTY MIME type
+  // for picked files, which made the import silently no-op. Accept by extension too, and just
+  // try to decode; if it isn't an image the Image onerror path bails cleanly.
+  const name=(file.name||"").toLowerCase();
+  const looksImage=(file.type&&file.type.indexOf("image/")===0) || /\.(jpe?g|png|gif|webp|bmp|heic|heif|avif|tiff?)$/.test(name);
+  if(!looksImage && file.type){ toast("That doesn't look like an image"); return; }
   const r=new FileReader();
-  r.onload=()=>{ const img=new Image(); img.onload=()=>{ const max=2400; let w=img.width,h=img.height; const sc=Math.min(1,max/Math.max(w,h)); const c=document.createElement("canvas"); c.width=Math.round(w*sc); c.height=Math.round(h*sc); c.getContext("2d").drawImage(img,0,0,c.width,c.height); cb({src:c.toDataURL("image/jpeg",0.92),scale:1,ox:50,oy:50,nw:c.width,nh:c.height,op:true}); }; img.src=r.result; };
+  r.onerror=()=>{ console.error("FileReader failed",r.error); toast("Couldn't read that file"); };
+  r.onload=()=>{
+    const img=new Image();
+    img.onerror=()=>{ console.error("Image decode failed"); toast("Couldn't open that image"); };
+    img.onload=()=>{ const max=2400; let w=img.width,h=img.height; const sc=Math.min(1,max/Math.max(w,h)); const c=document.createElement("canvas"); c.width=Math.round(w*sc); c.height=Math.round(h*sc); c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      let src; try{ src=c.toDataURL("image/jpeg",0.92); }catch(e){ console.error("toDataURL failed",e); src=r.result; }   // fall back to the raw data URL
+      cb({src, scale:1, ox:50, oy:50, nw:c.width, nh:c.height, op:true}); };
+    img.src=r.result;
+  };
   r.readAsDataURL(file);
 }
 
@@ -1220,16 +1266,16 @@ function imageSlot(pageIdx,slotIdx){
     ft.onclick=(e)=>{ e.stopPropagation(); d.fit=!d.fit; if(d.fit){ d.ox=50; d.oy=50; d.scale=1; } save(); renderEditor(); };
     // replace-photo button (since the full-cover file input is only present when empty)
     const rp=document.createElement("button"); rp.textContent="⇄"; rp.title="Replace photo";
-    rp.onclick=(e)=>{ e.stopPropagation(); const fi=document.createElement("input"); fi.type="file"; fi.accept="image/*"; fi.onchange=(ev)=>loadImg(ev.target.files[0],putImg); fi.click(); };
+    rp.onclick=(e)=>{ e.stopPropagation(); openFilePicker((f)=>loadImg(f,putImg)); };
     const del=document.createElement("button"); del.textContent="×"; del.title="Remove photo"; del.className="del";
     del.onclick=(e)=>{ e.stopPropagation(); pg.imgs[slotIdx]=null; save(); renderEditor(); };
     ctrls.appendChild(zo); ctrls.appendChild(zi); ctrls.appendChild(rs); ctrls.appendChild(ft); ctrls.appendChild(rp); ctrls.appendChild(del); slot.appendChild(ctrls);
   } else {
-    // empty: a full-cover file input so a tap anywhere opens the picker (no photo to pan yet)
+    // empty: tap to open the picker (routes through openFilePicker -> native dialog in the app,
+    // persistent hidden input on the web). No per-slot <input> so nothing to break on re-render.
     const ph=document.createElement("div"); ph.className="placeholder"; ph.textContent="Tap or drop photo"; slot.appendChild(ph);
-    const file=document.createElement("input"); file.type="file"; file.accept="image/*";
-    file.onchange=(e)=>loadImg(e.target.files[0],putImg);
-    slot.appendChild(file);
+    slot.style.cursor="pointer";
+    slot.addEventListener("click",(e)=>{ if(e.target.closest(".img-ctrls")) return; openFilePicker((f)=>loadImg(f,putImg)); });
   }
   slot.addEventListener("dragover",e=>{e.preventDefault(); slot.classList.add("drag");});
   slot.addEventListener("dragleave",()=>slot.classList.remove("drag"));
@@ -1250,10 +1296,16 @@ function coverPhotoControls(target, selId){
   const zi=mk("+","Zoom in",()=>{ d.scale=Math.min(4,d.scale*1.15); save(); renderEditor(); });
   const rs=mk("↺","Reset zoom & position",()=>{ d.scale=1; d.ox=50; d.oy=50; save(); renderEditor(); });
   const ft=mk(d.fit?"⤢":"▣", d.fit?"Fill frame (crop)":"Fit whole photo",()=>{ d.fit=!d.fit; if(d.fit){ d.ox=50; d.oy=50; d.scale=1; } save(); renderEditor(); });
-  const rp=mk("⇄","Replace photo",()=>{ const fi=document.createElement("input"); fi.type="file"; fi.accept="image/*"; fi.onchange=(ev)=>loadImg(ev.target.files[0],(entry)=>{ target.bg=entry; save(); renderEditor(); }); fi.click(); });
+  const rp=mk("⇄","Replace photo",()=>{ openFilePicker((f)=>loadImg(f,(entry)=>{ target.bg=entry; save(); renderEditor(); })); });
   const del=mk("×","Remove photo",()=>{ target.bg=null; save(); renderEditor(); },"del");
   ctrls.appendChild(zo); ctrls.appendChild(zi); ctrls.appendChild(rs); ctrls.appendChild(ft); ctrls.appendChild(rp); ctrls.appendChild(del);
   return ctrls;
+}
+/* an always-reliable "+ Photo" chip for an empty cover/back (its QR/name/title cover most of the wrap) */
+function addPhotoChip(setBg){
+  const b=document.createElement("button"); b.type="button"; b.className="add-photo-chip"; b.textContent="＋ Photo"; b.title="Add a background photo";
+  b.onclick=(e)=>{ e.stopPropagation(); openFilePicker((f)=>loadImg(f,(entry)=>{ setBg(entry); save(); renderEditor(); })); };
+  return b;
 }
 
 function coverSlot(){
@@ -1268,16 +1320,14 @@ function coverSlot(){
   wrap.appendChild(tw);
   wrap.addEventListener("mousedown",(e)=>{ if(e.target===wrap) selectEl("cover-photo"); });
   wrap.addEventListener("touchstart",(e)=>{ if(e.target===wrap) selectEl("cover-photo"); },{passive:true});
-  // tap the empty cover area (not the title/chip) to add a photo when none is set yet
-  wrap.addEventListener("click",(e)=>{ if(e.target===wrap && !state.cover.bg) pickCoverPhoto(state.cover); });
+  // tap anywhere on the empty cover (except the title text / handles) to add a photo when none is set
+  wrap.addEventListener("click",(e)=>{ if(!state.cover.bg && !e.target.closest(".dwrap") && !e.target.closest(".img-ctrls")) openFilePicker((f)=>loadImg(f,(entry)=>{ state.cover.bg=entry; save(); renderEditor(); })); });
   setTimeout(()=>autosize(title),0);
   return wrap;
 }
 /* open the file picker to set a cover/back background photo */
 function pickCoverPhoto(target){
-  const fi=document.createElement("input"); fi.type="file"; fi.accept="image/*";
-  fi.onchange=(ev)=>loadImg(ev.target.files[0],(entry)=>{ target.bg=entry; save(); renderEditor(); });
-  fi.click();
+  openFilePicker((f)=>loadImg(f,(entry)=>{ target.bg=entry; save(); renderEditor(); }));
 }
 function backSlot(){
   const wrap=document.createElement("div"); wrap.className="slot coverwrap"; wrap.style.background="#fff";
@@ -1294,8 +1344,8 @@ function backSlot(){
   wrap.appendChild(nw); wrap.appendChild(qw);
   wrap.addEventListener("mousedown",(e)=>{ if(e.target===wrap) selectEl("back-photo"); });
   wrap.addEventListener("touchstart",(e)=>{ if(e.target===wrap) selectEl("back-photo"); },{passive:true});
-  // tap the empty back-cover area (not the name/QR/chip) to add a photo when none is set yet
-  wrap.addEventListener("click",(e)=>{ if(e.target===wrap && !state.back.bg) pickCoverPhoto(state.back); });
+  // tap anywhere on the empty back cover (except the name/QR/handles) to add a photo when none is set
+  wrap.addEventListener("click",(e)=>{ if(!state.back.bg && !e.target.closest(".dwrap") && !e.target.closest(".img-ctrls")) openFilePicker((f)=>loadImg(f,(entry)=>{ state.back.bg=entry; save(); renderEditor(); })); });
   setTimeout(()=>QR.render(qc,state.back.url||""),0);
   return wrap;
 }
@@ -2274,7 +2324,7 @@ const REBUILD_PROMPT=[
 "DRAGGABLE COVER ELEMENTS (title text, name text, QR box): each is wrapped in a positioned .dwrap with a ✥ drag handle. Provide TWO drag methods: (a) the handle drags immediately; (b) dragging the element BODY also moves it, but only after the pointer passes a small ~6px threshold, so a plain click/tap still selects and (for text fields) focuses for editing. Both methods share the same move/snap/guide/save logic and support mouse + touch. Position is stored as {x,y%} + scale s; clamp x,y to 4-96%.",
 "MOBILE / TOUCH SUPPORT: the app must be fully usable on phones/tablets in a mobile browser. (1) Pan/zoom: implement touch events alongside mouse — one-finger drag pans a photo/cover background; TWO-FINGER PINCH zooms it (track the two touch points' distance ratio against the scale at gesture start, clamp scale 1-4, re-clamp pan). Give pannable surfaces touch-action:none so the browser doesn't hijack the gesture for page scroll/zoom. (2) Selection on touch: because the pan handler calls preventDefault (which suppresses the synthetic mousedown), add explicit touchstart listeners to select cover/back photos and their wraps, and onfocus selection for the title/name text fields. (3) Text-box/QR drag handles must listen for touchstart/touchmove/touchend (they already do for mouse). (4) Interior photos keep on-screen +/- /reset buttons for zoom without a wheel. (5) Responsive @media (max-width:640px): single-column spread, full-width masthead action buttons, cap the bottom inspector at ~52vh with overflow-y:auto so it doesn't cover the screen, add extra bottom padding to .wrap, larger nudge-pad tap targets. Do NOT force a fixed .canvas height on mobile — keep the printed-panel aspect-ratio so the preview stays true. (6) When the hamburger DRAWER is open, HIDE the fixed bottom inspector (toggle a body.drawer-open class in openDrawer/closeDrawer and hide .inspector under it) and give the drawer generous bottom padding (incl. env(safe-area-inset-bottom)) — otherwise the fixed inspector (z-index above the drawer) sits over the drawer's lower content and hides the 'Start over' button on phones (bug to avoid).",
 "",
-"FRONT COVER: editable title + optional background photo (same pan/zoom, clamped). BACK COVER: editable name/handle + a QR code + optional background photo. The QR encodes a URL entered in the bottom panel but the URL text is NOT printed. Default positions spaced apart (name high, QR lower). Generate QR codes in PURE VANILLA JS (byte mode, error-correction M, auto version) — no external QR library. To ADD a cover photo, tap the empty cover wrap itself (e.target===wrap, when no photo is set) to open the file picker; once a photo exists, tapping pans/selects (don't reopen the picker) and Replace/Remove live in the bottom inspector when the photo is selected. (No '+ photo' chip — it was removed as redundant.)",
+"FRONT COVER: editable title + optional background photo (same pan/zoom, clamped). BACK COVER: editable name/handle + a QR code + optional background photo. The QR encodes a URL entered in the bottom panel but the URL text is NOT printed. Default positions spaced apart (name high, QR lower). Generate QR codes in PURE VANILLA JS (byte mode, error-correction M, auto version) — no external QR library. To ADD a cover photo, tap the empty cover ANYWHERE except the title/name/QR boxes or the on-image controls. CRITICAL for the packaged desktop app: use ONE app-level PERSISTENT hidden file input (created once, appended to body, never removed) with a stored callback set at click time — do NOT create a fresh <input> per cover instance. On covers, selecting/tapping re-renders the cover wrap, which would DESTROY a per-instance input (and its change handler) before the async 'change' fires, so the chosen photo silently never landed in the app (picker opened, photo didn't appear — interiors were unaffected because they don't re-render between click and change). The persistent input survives re-renders; its change reads files[0], calls the stored callback, then resets value so the same file can be re-picked. DESKTOP-APP FILE IMPORT: in a packaged Tauri app the HTML <input type=file> change event proved UNRELIABLE (picker opens, file never arrives), which broke cover photo import in the .app even though the web build worked. So route ALL image picking through one openFilePicker(cb) that, when window.__TAURI__ is present, uses Tauri's NATIVE dialog.open + fs.readFile to get bytes and hands loadImg a real File built from them; on the web it falls back to the persistent hidden input. This needs the app to add tauri-plugin-dialog + tauri-plugin-fs (registered in main.rs, granted in capabilities, withGlobalTauri:true) — every add/replace path (interior slot tap, interior Replace, cover/back empty-tap, cover/back Replace, inspector Add/Replace) goes through openFilePicker so it works identically in app and web. CRITICAL: open every file picker through a shared helper that APPENDS the <input type=file> to the DOM before calling .click() (then removes it) — a detached input's .click() is ignored by the desktop/Tauri WebView, which is why the empty-cover tap opened nothing in the Mac app while the button worked.",
 "",
 "SELECTION + FIXED BOTTOM INSPECTOR PANEL (Dirty-Little-Zine style): click any cover element (title, name, QR, or a photo) to select it; a fixed panel at the bottom shows controls: Text -> Font (6 system fonts only: Serif/Sans/Mono/Slab/Condensed/Script; no web fonts), Text colour (Black/White), Alignment (Left/Centre/Right), Size (A-/A+ buttons + slider). QR -> link field + size. Photo -> Add / Replace / Reset position / Remove. Cover/back photos ALSO get the same on-image hover controls as interior photos (zoom +/-, reset, Fill/Fit toggle, replace, delete), overlaid on the photo. Each cover has a small \"+ photo\" chip (top-left, on hover, WHITE background not cream) to reliably add/select a cover photo even when name/QR cover the panel. Move elements by dragging a move handle; elements are positioned as {x,y,s} percentages, centered via translate(-50%,-50%) scale(s). Add snapping to 10/25/33/50/66/75/90% with a thin guide line. Text boxes auto-fit width to content (no clipping, no forced wrap of single words), and cover text sizes use the SAME panel-height ratios as print (title ~4% panel height, name ~3%, QR ~17.6%) so the editor is WYSIWYG.",
 "",
@@ -2305,7 +2355,7 @@ const REBUILD_PROMPT=[
 "- Get code (.txt): the clean source (no embedded zine) as a .txt.",
 "- On boot, if window.__EMBEDDED_ZINE__ exists, hydrate from it (and persist to localStorage) before falling back to localStorage.",
 "",
-"ROBUSTNESS (previously-hit bugs — build defensively): Wrap boot in try/catch; on corrupt/unknown state, reset to a clean 8-page default rather than rendering blank. Never let the page-count lookup return undefined (that threw on array.length = undefined); fall back to 8. Normalize each saved page/image entry on load (valid layout, 2-slot imgs array, image objects {src,scale,ox,oy,nw,nh,op,fit} — ox/oy are object-position % with 50=centre; fit=whole-photo contain mode; recentre legacy entries lacking op:true to 50/50). Hydrate defensively (validate types, backfill new fields like align, color, font, positions with .s scale).",
+"ROBUSTNESS (previously-hit bugs — build defensively): Wrap boot in try/catch; on corrupt/unknown state, reset to a clean 8-page default rather than rendering blank. Never let the page-count lookup return undefined (that threw on array.length = undefined); fall back to 8. IMAGE IMPORT must not hard-gate on file.type: the packaged desktop (Tauri) WebView often reports an EMPTY MIME type for picked files, so `if(!file.type.startsWith('image/')) return` made photo import silently no-op in the Mac app while working on the web. Instead accept by extension too (jpg/png/gif/webp/bmp/heic/avif/tiff), add FileReader.onerror + Image.onerror handlers (toast on failure instead of failing silently), and fall back to the raw data URL if canvas.toDataURL throws. Normalize each saved page/image entry on load (valid layout, 2-slot imgs array, image objects {src,scale,ox,oy,nw,nh,op,fit} — ox/oy are object-position % with 50=centre; fit=whole-photo contain mode; recentre legacy entries lacking op:true to 50/50). Hydrate defensively (validate types, backfill new fields like align, color, font, positions with .s scale).",
 "",
 "PWA / INSTALLABLE: ship the app as an installable PWA so it works on phones. index.html links a manifest.webmanifest (name 'The Honey Bunny', display standalone, theme #1a1614, background #f4efe6, an SVG icon icon.svg with purpose 'any maskable', start_url ./index.html, scope ./) and adds meta: theme-color, apple-mobile-web-app-capable=yes, apple-mobile-web-app-title, viewport with viewport-fit=cover, and apple-touch-icon + icon links pointing to icon.svg. A sw.js service worker caches the shell (./, index.html, manifest, icon.svg) — network-first for navigations, cache-first otherwise — for full offline use; register it only when location.protocol is http/https (never file://, which can't host a SW). Add a hidden 'Install app' button in the masthead shown on 'beforeinstallprompt' (Android/desktop Chrome); on iOS Safari the user installs via Share → Add to Home Screen. NOTE: this requires hosting at an https URL — iOS will NOT run a local .html opened from the Files app.",
 "Deliver the complete working index.html (plus manifest.webmanifest, sw.js, and icon.svg for the PWA)."
