@@ -1,0 +1,14 @@
+{
+  "name": "the-honey-bunny",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The Honey Bunny — an offline photo-zine maker (Tauri desktop wrapper)",
+  "scripts": {
+    "tauri": "tauri",
+    "build": "tauri build",
+    "dev": "tauri dev"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

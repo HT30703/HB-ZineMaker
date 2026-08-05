@@ -1,0 +1,19 @@
+{
+  "name": "The Honey Bunny",
+  "short_name": "Honey Bunny",
+  "description": "A little offline zine maker — one sheet, one cut, a whole book.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4efe6",
+  "theme_color": "#1a1614",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
