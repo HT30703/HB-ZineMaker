@@ -948,14 +948,20 @@ function makeDraggable(el, container, pos, selId, dragWhole){
 }
 
 /* ---------------- images ---------------- */
-/* open a native file picker reliably (the input must be IN the DOM before .click() or the
-   desktop/Tauri WebView ignores it). Calls cb(file) with the chosen file. */
-function openFilePicker(cb){
-  const fi=document.createElement("input"); fi.type="file"; fi.accept="image/*";
-  fi.style.cssText="position:fixed;left:-9999px;width:1px;height:1px;opacity:0;";
-  fi.onchange=(ev)=>{ const f=ev.target.files&&ev.target.files[0]; if(f) cb(f); setTimeout(()=>{ if(fi.parentNode) fi.parentNode.removeChild(fi); },0); };
-  document.body.appendChild(fi); fi.click();
+/* ONE persistent, app-level file input. Created once and never removed, so a re-render of the
+   cover/page between opening the picker and the async 'change' event can't destroy the element
+   or its handler (that was the app-only bug: covers re-rendered on select, killing a per-instance
+   input's change before the file arrived, so the photo never landed). */
+var _picker=null, _pickerCb=null;
+function ensurePicker(){
+  if(_picker) return _picker;
+  _picker=document.createElement("input"); _picker.type="file"; _picker.accept="image/*";
+  _picker.style.cssText="position:fixed;left:-9999px;width:1px;height:1px;opacity:0;";
+  _picker.addEventListener("change",(ev)=>{ const f=ev.target.files&&ev.target.files[0]; const cb=_pickerCb; _pickerCb=null; try{ _picker.value=""; }catch(_){} if(f&&cb) cb(f); });
+  document.body.appendChild(_picker);
+  return _picker;
 }
+function openFilePicker(cb){ const p=ensurePicker(); _pickerCb=cb; p.click(); }
 function loadImg(file,cb){
   if(!file) return;
   // Don't hard-gate on file.type — the desktop (Tauri) WebView often reports an EMPTY MIME type
@@ -1291,7 +1297,7 @@ function coverSlot(){
   wrap.addEventListener("mousedown",(e)=>{ if(e.target===wrap) selectEl("cover-photo"); });
   wrap.addEventListener("touchstart",(e)=>{ if(e.target===wrap) selectEl("cover-photo"); },{passive:true});
   // tap anywhere on the empty cover (except the title text / handles) to add a photo when none is set
-  wrap.addEventListener("click",(e)=>{ if(!state.cover.bg && !e.target.closest(".dwrap") && !e.target.closest(".img-ctrls")) pickCoverPhoto(state.cover); });
+  wrap.addEventListener("click",(e)=>{ if(!state.cover.bg && !e.target.closest(".dwrap") && !e.target.closest(".img-ctrls")) openFilePicker((f)=>loadImg(f,(entry)=>{ state.cover.bg=entry; save(); renderEditor(); })); });
   setTimeout(()=>autosize(title),0);
   return wrap;
 }
@@ -1315,7 +1321,7 @@ function backSlot(){
   wrap.addEventListener("mousedown",(e)=>{ if(e.target===wrap) selectEl("back-photo"); });
   wrap.addEventListener("touchstart",(e)=>{ if(e.target===wrap) selectEl("back-photo"); },{passive:true});
   // tap anywhere on the empty back cover (except the name/QR/handles) to add a photo when none is set
-  wrap.addEventListener("click",(e)=>{ if(!state.back.bg && !e.target.closest(".dwrap") && !e.target.closest(".img-ctrls")) pickCoverPhoto(state.back); });
+  wrap.addEventListener("click",(e)=>{ if(!state.back.bg && !e.target.closest(".dwrap") && !e.target.closest(".img-ctrls")) openFilePicker((f)=>loadImg(f,(entry)=>{ state.back.bg=entry; save(); renderEditor(); })); });
   setTimeout(()=>QR.render(qc,state.back.url||""),0);
   return wrap;
 }
@@ -2294,7 +2300,7 @@ const REBUILD_PROMPT=[
 "DRAGGABLE COVER ELEMENTS (title text, name text, QR box): each is wrapped in a positioned .dwrap with a ✥ drag handle. Provide TWO drag methods: (a) the handle drags immediately; (b) dragging the element BODY also moves it, but only after the pointer passes a small ~6px threshold, so a plain click/tap still selects and (for text fields) focuses for editing. Both methods share the same move/snap/guide/save logic and support mouse + touch. Position is stored as {x,y%} + scale s; clamp x,y to 4-96%.",
 "MOBILE / TOUCH SUPPORT: the app must be fully usable on phones/tablets in a mobile browser. (1) Pan/zoom: implement touch events alongside mouse — one-finger drag pans a photo/cover background; TWO-FINGER PINCH zooms it (track the two touch points' distance ratio against the scale at gesture start, clamp scale 1-4, re-clamp pan). Give pannable surfaces touch-action:none so the browser doesn't hijack the gesture for page scroll/zoom. (2) Selection on touch: because the pan handler calls preventDefault (which suppresses the synthetic mousedown), add explicit touchstart listeners to select cover/back photos and their wraps, and onfocus selection for the title/name text fields. (3) Text-box/QR drag handles must listen for touchstart/touchmove/touchend (they already do for mouse). (4) Interior photos keep on-screen +/- /reset buttons for zoom without a wheel. (5) Responsive @media (max-width:640px): single-column spread, full-width masthead action buttons, cap the bottom inspector at ~52vh with overflow-y:auto so it doesn't cover the screen, add extra bottom padding to .wrap, larger nudge-pad tap targets. Do NOT force a fixed .canvas height on mobile — keep the printed-panel aspect-ratio so the preview stays true. (6) When the hamburger DRAWER is open, HIDE the fixed bottom inspector (toggle a body.drawer-open class in openDrawer/closeDrawer and hide .inspector under it) and give the drawer generous bottom padding (incl. env(safe-area-inset-bottom)) — otherwise the fixed inspector (z-index above the drawer) sits over the drawer's lower content and hides the 'Start over' button on phones (bug to avoid).",
 "",
-"FRONT COVER: editable title + optional background photo (same pan/zoom, clamped). BACK COVER: editable name/handle + a QR code + optional background photo. The QR encodes a URL entered in the bottom panel but the URL text is NOT printed. Default positions spaced apart (name high, QR lower). Generate QR codes in PURE VANILLA JS (byte mode, error-correction M, auto version) — no external QR library. To ADD a cover photo, tap the empty cover ANYWHERE except the title/name/QR boxes or the on-image controls (check !e.target.closest('.dwrap') && !closest('.img-ctrls') rather than requiring e.target===wrap — the exact-background-only check made the tap-target a thin strip because the centred title textarea covers most of the cover, so it felt broken especially on touch/desktop app). CRITICAL: open every file picker through a shared helper that APPENDS the <input type=file> to the DOM before calling .click() (then removes it) — a detached input's .click() is ignored by the desktop/Tauri WebView, which is why the empty-cover tap opened nothing in the Mac app while the button worked.",
+"FRONT COVER: editable title + optional background photo (same pan/zoom, clamped). BACK COVER: editable name/handle + a QR code + optional background photo. The QR encodes a URL entered in the bottom panel but the URL text is NOT printed. Default positions spaced apart (name high, QR lower). Generate QR codes in PURE VANILLA JS (byte mode, error-correction M, auto version) — no external QR library. To ADD a cover photo, tap the empty cover ANYWHERE except the title/name/QR boxes or the on-image controls. CRITICAL for the packaged desktop app: use ONE app-level PERSISTENT hidden file input (created once, appended to body, never removed) with a stored callback set at click time — do NOT create a fresh <input> per cover instance. On covers, selecting/tapping re-renders the cover wrap, which would DESTROY a per-instance input (and its change handler) before the async 'change' fires, so the chosen photo silently never landed in the app (picker opened, photo didn't appear — interiors were unaffected because they don't re-render between click and change). The persistent input survives re-renders; its change reads files[0], calls the stored callback, then resets value so the same file can be re-picked. CRITICAL: open every file picker through a shared helper that APPENDS the <input type=file> to the DOM before calling .click() (then removes it) — a detached input's .click() is ignored by the desktop/Tauri WebView, which is why the empty-cover tap opened nothing in the Mac app while the button worked.",
 "",
 "SELECTION + FIXED BOTTOM INSPECTOR PANEL (Dirty-Little-Zine style): click any cover element (title, name, QR, or a photo) to select it; a fixed panel at the bottom shows controls: Text -> Font (6 system fonts only: Serif/Sans/Mono/Slab/Condensed/Script; no web fonts), Text colour (Black/White), Alignment (Left/Centre/Right), Size (A-/A+ buttons + slider). QR -> link field + size. Photo -> Add / Replace / Reset position / Remove. Cover/back photos ALSO get the same on-image hover controls as interior photos (zoom +/-, reset, Fill/Fit toggle, replace, delete), overlaid on the photo. Each cover has a small \"+ photo\" chip (top-left, on hover, WHITE background not cream) to reliably add/select a cover photo even when name/QR cover the panel. Move elements by dragging a move handle; elements are positioned as {x,y,s} percentages, centered via translate(-50%,-50%) scale(s). Add snapping to 10/25/33/50/66/75/90% with a thin guide line. Text boxes auto-fit width to content (no clipping, no forced wrap of single words), and cover text sizes use the SAME panel-height ratios as print (title ~4% panel height, name ~3%, QR ~17.6%) so the editor is WYSIWYG.",
 "",
