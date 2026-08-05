@@ -147,6 +147,11 @@
   .ctl{display:flex;flex-direction:column;gap:5px;}
   .ctl label{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:bold;}
   .ctl select, .ctl button{ font-family:inherit; font-size:13px; padding:8px 10px; border:2px solid var(--ink); background:var(--paper); color:var(--ink); cursor:pointer; }
+  .tpl-list{display:flex;flex-direction:column;gap:6px;}
+  .tpl-chip{display:flex;align-items:center;gap:8px;justify-content:space-between;border:1.5px solid var(--ink);background:var(--paper);padding:6px 8px 6px 10px;font-size:12px;}
+  .tpl-chip .tc-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tpl-chip .tc-del{flex:0 0 auto;width:22px;height:22px;line-height:20px;text-align:center;padding:0;font-size:14px;border:1.5px solid var(--ink);background:var(--paper);color:var(--ink);cursor:pointer;border-radius:3px;}
+  .tpl-chip .tc-del:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
   .btn-primary{background:var(--accent)!important;color:#fff!important;font-weight:bold;text-transform:uppercase;letter-spacing:1px;}
   .btn-primary:hover{background:#c8392f!important;}
   .btn-ghost:hover{background:var(--paper2)!important;}
@@ -422,6 +427,10 @@
         <div class="ctl" id="delTplRow" style="display:none;">
           <label>&nbsp;</label>
           <button class="btn-ghost danger" id="delTplBtn">Delete this custom template</button>
+        </div>
+        <div class="ctl" id="myTplRow" style="display:none;">
+          <label>Your custom templates</label>
+          <div id="myTplList" class="tpl-list"></div>
         </div>
         <div class="ctl"><label>Paper</label>
           <select id="paper"><option value="letter">US Letter</option><option value="a4">A4</option><option value="a3">A3</option></select>
@@ -1949,6 +1958,44 @@ const QR=(function(){
 
 /* ---------------- wiring ---------------- */
 function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2000); }
+/* in-app confirm dialog (native confirm() is blocked inside the Tauri/desktop WebView, so
+   Start over / delete silently did nothing there). Returns a Promise<boolean>. */
+function askConfirm(message, okLabel){
+  return new Promise((resolve)=>{
+    const ov=document.createElement("div"); ov.className="dl-overlay"; ov.style.display="flex"; ov.style.zIndex="140";
+    const box=document.createElement("div"); box.className="dl-modal"; box.style.maxWidth="420px";
+    const body=document.createElement("div"); body.style.padding="20px"; body.style.fontSize="14px"; body.style.lineHeight="1.5"; body.textContent=message;
+    const row=document.createElement("div"); row.style.cssText="display:flex;gap:10px;justify-content:flex-end;padding:0 18px 18px;";
+    const cancel=document.createElement("button"); cancel.className="ins-btn"; cancel.textContent="Cancel";
+    const ok=document.createElement("button"); ok.className="ins-btn primary"; ok.textContent=okLabel||"OK";
+    const done=(v)=>{ if(ov.parentNode) ov.parentNode.removeChild(ov); document.removeEventListener("keydown",onKey); resolve(v); };
+    cancel.onclick=()=>done(false); ok.onclick=()=>done(true);
+    ov.addEventListener("click",(e)=>{ if(e.target===ov) done(false); });
+    const onKey=(e)=>{ if(e.key==="Escape") done(false); else if(e.key==="Enter") done(true); };
+    document.addEventListener("keydown",onKey);
+    row.appendChild(cancel); row.appendChild(ok); box.appendChild(body); box.appendChild(row); ov.appendChild(box); document.body.appendChild(ov);
+    ok.focus();
+  });
+}
+/* in-app text prompt (native prompt() is also blocked in the desktop WebView). Returns Promise<string|null>. */
+function askPrompt(message, def, okLabel){
+  return new Promise((resolve)=>{
+    const ov=document.createElement("div"); ov.className="dl-overlay"; ov.style.display="flex"; ov.style.zIndex="140";
+    const box=document.createElement("div"); box.className="dl-modal"; box.style.maxWidth="440px";
+    const body=document.createElement("div"); body.style.padding="20px 20px 10px"; body.style.fontSize="14px"; body.textContent=message;
+    const inp=document.createElement("input"); inp.type="text"; inp.value=def||""; inp.style.cssText="width:calc(100% - 40px);margin:0 20px;padding:9px 10px;border:2px solid var(--ink);font-family:inherit;font-size:14px;background:var(--paper);color:var(--ink);";
+    const row=document.createElement("div"); row.style.cssText="display:flex;gap:10px;justify-content:flex-end;padding:14px 18px 18px;";
+    const cancel=document.createElement("button"); cancel.className="ins-btn"; cancel.textContent="Cancel";
+    const ok=document.createElement("button"); ok.className="ins-btn primary"; ok.textContent=okLabel||"Save";
+    const done=(v)=>{ if(ov.parentNode) ov.parentNode.removeChild(ov); document.removeEventListener("keydown",onKey); resolve(v); };
+    cancel.onclick=()=>done(null); ok.onclick=()=>done(inp.value);
+    ov.addEventListener("click",(e)=>{ if(e.target===ov) done(null); });
+    const onKey=(e)=>{ if(e.key==="Escape") done(null); else if(e.key==="Enter"){ e.preventDefault(); done(inp.value); } };
+    document.addEventListener("keydown",onKey);
+    row.appendChild(cancel); row.appendChild(ok); box.appendChild(body); box.appendChild(inp); box.appendChild(row); ov.appendChild(box); document.body.appendChild(ov);
+    inp.focus(); inp.select();
+  });
+}
 
 /* rebuild the Format dropdown from the classic option + saved templates */
 function rebuildFormatDropdown(){
@@ -1962,6 +2009,22 @@ function rebuildFormatDropdown(){
   });
   sel.value=state.format;
   updateDelTplBtn();
+  renderMyTemplates();
+}
+/* list each user-saved custom template with a × to delete it */
+function renderMyTemplates(){
+  const row=document.getElementById("myTplRow"), list=document.getElementById("myTplList");
+  if(!row||!list) return;
+  list.innerHTML="";
+  if(!state.savedTemplates.length){ row.style.display="none"; return; }
+  row.style.display="";
+  state.savedTemplates.forEach(t=>{
+    const chip=document.createElement("div"); chip.className="tpl-chip";
+    const nm=document.createElement("span"); nm.className="tc-name"; nm.textContent=t.name+" ("+t.book+"pg)";
+    const x=document.createElement("button"); x.className="tc-del"; x.textContent="×"; x.title="Delete “"+t.name+"”";
+    x.onclick=()=>deleteTemplate(t.id);
+    chip.appendChild(nm); chip.appendChild(x); list.appendChild(chip);
+  });
 }
 /* show the delete button only for a user-saved custom template (not classic / not built-in) */
 function updateDelTplBtn(){
@@ -1974,14 +2037,17 @@ document.getElementById("format").onchange=(e)=>{
   state.format=e.target.value; currentSpread=0;
   ensurePages(); save(); renderEditor(); updateDelTplBtn();
 };
-document.getElementById("delTplBtn").onclick=()=>{
-  const t=state.savedTemplates.find(t=>t.id===state.format); if(!t) return;
-  if(!confirm("Delete the custom template “"+t.name+"”? This can't be undone. (Your current pages stay; the format switches back to the classic 8-page.)")) return;
-  state.savedTemplates=state.savedTemplates.filter(x=>x.id!==t.id);
-  state.format="8"; currentSpread=0;
+/* shared delete: removes a custom template by id; if it was the active format, revert to classic 8-page */
+async function deleteTemplate(id){
+  const t=state.savedTemplates.find(x=>x.id===id); if(!t) return;
+  const ok=await askConfirm("Delete the custom template “"+t.name+"”? This can’t be undone. (Your current pages stay.)","Delete");
+  if(!ok) return;
+  state.savedTemplates=state.savedTemplates.filter(x=>x.id!==id);
+  if(state.format===id){ state.format="8"; currentSpread=0; }
   rebuildFormatDropdown(); ensurePages(); save(); renderEditor();
   toast("Template deleted");
-};
+}
+document.getElementById("delTplBtn").onclick=()=>deleteTemplate(state.format);
 document.getElementById("paper").onchange=(e)=>{ state.paper=e.target.value; save(); renderEditor(); };
 document.getElementById("cropMarks").onchange=(e)=>{ state.cropMarks=(e.target.value==="on"); save(); };
 // editor visual zoom (does NOT touch print/download size)
@@ -2060,7 +2126,7 @@ document.getElementById("deflayout").onchange=(e)=>{
   save(); renderEditor();
   toast(changed?("Blank pages set to "+(v==="split"?"2 horizontal":"1 portrait")):"No blank pages to change");
 };
-document.getElementById("clearAll").onclick=()=>{ if(!confirm("Clear photos & text? (Your saved templates are kept.)"))return; state.pages=[]; state.cover=freshCover(); state.back=freshBack(); state.format="8"; currentSpread=0; clearSelection(); ensurePages(); rebuildFormatDropdown(); renderEditor(); save(); toast("Cleared"); };
+document.getElementById("clearAll").onclick=async ()=>{ if(!(await askConfirm("Clear photos & text? (Your saved templates are kept.)","Start over"))) return; state.pages=[]; state.cover=freshCover(); state.back=freshBack(); state.format="8"; currentSpread=0; clearSelection(); ensurePages(); rebuildFormatDropdown(); renderEditor(); save(); toast("Cleared"); };
 document.getElementById("pdfBtn").onclick=()=>exportPrintPDF();
 document.getElementById("viewBtn").onclick=()=>openZineViewer();
 document.getElementById("zvClose").onclick=()=>closeZineViewer();
@@ -2214,7 +2280,7 @@ const REBUILD_PROMPT=[
 "",
 "TEXT LEGIBILITY: use a tight 1px multi-directional outline hugging the letters (dark ring on white text, light ring on dark text) — NOT a blurry drop-shadow that creates a visible box/halo behind the text (that halo was a bug). Cover/back backgrounds are pure white.",
 "",
-"CUSTOM FOLD TEMPLATES: a collapsible \"Define your own fold template\" section with Book pages (8/16), Sheets, Columns (2-4), Rows (1-4), and per-panel assignment (which page + an \"upside-down 180deg\" checkbox) with validation (warn on duplicate/missing pages). \"Save as template\" prompts for a name and adds it as a new option in the Format dropdown (persisted in savedTemplates). Selecting a template drives the imposition and page count. Provide a DELETE control: when the selected Format is a user-saved template (not the classic 8-page and not a built-in), show a 'Delete this custom template' button near the Format dropdown that confirms, removes it from savedTemplates, and reverts Format to classic 8-page.",
+"CUSTOM FOLD TEMPLATES: a collapsible \"Define your own fold template\" section with Book pages (8/16), Sheets, Columns (2-4), Rows (1-4), and per-panel assignment (which page + an \"upside-down 180deg\" checkbox) with validation (warn on duplicate/missing pages). \"Save as template\" adds it as a new option in the Format dropdown (persisted in savedTemplates). Selecting a template drives the imposition and page count. DELETE controls: (a) a 'Your custom templates' list under the Format dropdown showing every saved template as a chip with a × delete button; (b) a 'Delete this custom template' button shown when the active Format is a user-saved template. Both call a shared deleteTemplate(id) that confirms, removes it from savedTemplates, and reverts Format to classic 8-page if it was active. CRITICAL — do NOT use the browser's native confirm()/prompt(): they are BLOCKED (no-op) inside the Tauri/desktop WebView, which is why 'Start over', delete-template, and 'Save as template' silently did nothing in the packaged Mac app. Provide in-app askConfirm()/askPrompt() modal dialogs (a .dl-overlay with a message, Cancel/OK or a text input, Enter=OK/Escape=Cancel) and use them everywhere a confirm or text prompt is needed (Start over, delete template, name-this-template).",
 "PORTRAIT-SHEET TEMPLATES: default sheet orientation is LANDSCAPE. Templates flagged portraitPages:true (the I-cut booklet) need a PORTRAIT sheet so a 4x4 grid yields portrait page-cells and uploaded photos FILL each cell (a landscape sheet made cells landscape, so a portrait-framed photo showed only a cropped slice — the bug to avoid). paperInfo() must swap W/H, the @page keyword (e.g. 'A3 portrait'), the 300 DPI px, and PDF points when the active template is portraitPages. Because paperInfo() drives EVERYTHING (editor preview aspect, print @page + 100vw/100vh sheet, canvas, PDF), the whole pipeline stays consistent and the editor preview aspect is just (sheetW/cols)/(sheetH/rows) with NO extra inversion.",
 "PAPER SIZES: support US Letter, A4, AND A3. Centralize dimensions in a paperInfo() helper returning {wmm,hmm, wpx,hpx (at 300 DPI), page (@page keyword incl. orientation), ptW,ptH (PDF points)} per size, defaulting to LANDSCAPE and swapping to PORTRAIT for portraitPages templates. Base sizes: Letter 279.4x215.9mm / 3300x2550px / 792x612pt; A4 297x210mm / ~3507x2481px / 842x595pt; A3 420x297mm / ~4961x3508px / 1191x842pt. Every sizing path (editor preview panel aspect ratio, print sheet math, 300 DPI canvas, @page, PDF points) must read from paperInfo() — no scattered ternaries.",
 "BUILT-IN 16-PAGE I-CUT TEMPLATE: ship a built-in (non-deletable) template 'icut16' = '16-page zine (I-cut)' in a BUILTIN_TEMPLATES array that activeTemplate() and the Format dropdown include (before saved templates). It works on ANY paper size (Letter/A4/A3 — A3 just yields the largest pages); do NOT force a paper size when selected. It sets portraitPages:true (see PORTRAIT-SHEET TEMPLATES) so it prints on a PORTRAIT sheet and photos fill each cell. Single sheet, 4 cols x 4 rows, printed ONE side, folded into a booklet via an 'I'-shaped cut through the centre (vertical slit down the middle two rows + horizontal slit across the middle two columns). Rows alternate rotation: rows 0 & 2 are 180deg, rows 1 & 3 are 0deg (the 180deg rotation must rotate the PHOTO too, not just text — wrap the whole panel content). Page imposition by (row,col), page numbers: row0 8,7,6,5 / row1 9,10,3,4 / row2 12,11,2,15 / row3 13,14,16,1(front cover). Store as page indices (pageNumber-1). Crop marks adapt: for icut16 draw a bold dashed 'I' cut guide; for 2-row layouts the classic centre fold line; always edge-to-edge corner trim guides + centre crosshair. Apply identically in print CSS and the 300 DPI canvas, driven by paperInfo().",
@@ -2259,8 +2325,8 @@ document.getElementById("tplSheets").onchange=(e)=>{ rebuildSheets(parseInt(e.ta
 document.getElementById("tplCols").onchange=(e)=>{ const c=parseInt(e.target.value,10); TPL.sheets.forEach(s=>s.cols=c); renderTplGrid(); validateTpl(); };
 document.getElementById("tplRows").onchange=(e)=>{ const r=parseInt(e.target.value,10); TPL.sheets.forEach(s=>s.rows=r); renderTplGrid(); validateTpl(); };
 document.getElementById("tplReset").onclick=()=>{ TPL.book=8; TPL.sheets=[{cols:4,rows:2,panels:LAYOUT_8.map(p=>({page:p.page,rot:p.rot}))}]; document.getElementById("tplBook").value="8"; document.getElementById("tplSheets").value="1"; document.getElementById("tplCols").value="4"; document.getElementById("tplRows").value="2"; renderTplGrid(); validateTpl(); };
-document.getElementById("tplApply").onclick=()=>{
-  const name=(prompt("Name this template (it'll appear in the Format menu):","My "+TPL.book+"-page fold")||"").trim();
+document.getElementById("tplApply").onclick=async ()=>{
+  const name=((await askPrompt("Name this template (it’ll appear in the Format menu):","My "+TPL.book+"-page fold"))||"").trim();
   if(!name) return;
   const id="tpl_"+Date.now();
   state.savedTemplates.push({ id, name, book:TPL.book, sheets:TPL.sheets.map(s=>({cols:s.cols,rows:s.rows,panels:s.panels.map(p=>({page:p.page,rot:p.rot}))})) });
