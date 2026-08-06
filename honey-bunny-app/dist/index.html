@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>The Honey Bunny</title>
+<title>Harbour &amp; Bay · 香港</title>
 <meta name="description" content="A little offline zine maker — one sheet, one cut, a whole book.">
-<meta name="theme-color" content="#1a1614">
+<meta name="theme-color" content="#123328">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -55,17 +55,19 @@
   body[data-theme="hk"] .inspector{border-top-color:var(--accent);}
   /* HK-only brand bits: hidden in the default theme, shown here */
   .brand-frame{display:flex;align-items:center;gap:12px;}
-  .title-row{display:flex;align-items:center;gap:10px;}
+  .title-row{display:flex;align-items:center;gap:6px;position:relative;}
   .brand-zh,.seal-badge{display:none;}
   body[data-theme="hk"] .brand-zh{display:block;font-size:11px;color:rgba(255,255,255,.7);letter-spacing:3px;font-weight:400;margin-top:2px;}
+  /* tag hangs just under the title as a zero-height overflow line, so it never grows the masthead */
   body[data-theme="hk"] .seal-badge{
-    display:inline-flex;align-items:center;gap:4px;
-    font-family:monospace,var(--hk-font);font-size:10px;font-weight:bold;letter-spacing:1px;
-    color:var(--accent);border:1.5px solid var(--accent);padding:3px 8px;border-radius:3px;
-    background:rgba(255,255,255,.95);box-shadow:0 0 0 1px var(--accent);text-transform:uppercase;
-    white-space:nowrap;line-height:1;
+    display:block;position:absolute;top:100%;left:2px;margin-top:-1px;
+    font-family:var(--hk-font),monospace;font-size:11px;font-weight:400;letter-spacing:0;
+    color:rgba(255,255,255,.6);white-space:nowrap;line-height:1;pointer-events:none;
   }
   .title-block{display:flex;flex-direction:column;}
+  /* HK: reserve the tag's height under the title so the block's centre still matches the row centre
+     (keeps the title vertically balanced against the hamburger + action buttons; no header growth). */
+  body[data-theme="hk"] .title-block{padding-bottom:13px;}
   /* theme toggle switch — compact, divider-separated */
   .theme-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-size:9px;letter-spacing:1.4px;text-transform:uppercase;font-weight:bold;color:var(--mast-fg);opacity:.85;margin-left:6px;padding-left:12px;border-left:1px solid rgba(255,255,255,.28);transition:opacity .15s;}
   .theme-toggle:hover{opacity:1;}
@@ -391,17 +393,16 @@
   }
 </style>
 </head>
-<body>
+<body data-theme="hk">
 <div class="wrap">
   <header class="masthead">
     <button type="button" class="ham" id="menuBtn" aria-label="Open menu" title="Menu &amp; settings"><span></span><span></span><span></span></button>
     <div class="brand-frame">
       <div class="title-block">
         <div class="title-row">
-          <h1 id="brandTitle">The Honey <span class="rip">Bunny</span></h1>
-          <span class="seal-badge">HK 852 香港</span>
+          <h1 id="brandTitle">Harbour &amp; <span class="rip">Bay</span></h1>
+          <span class="seal-badge">香港852</span>
         </div>
-        <span class="brand-zh">維多利亞出版</span>
       </div>
     </div>
     <div class="mast-actions">
@@ -768,7 +769,7 @@ function normImg(e){
 function ensurePages(){
   let n = (state.format==="8") ? 8 : (activeTemplate()?activeTemplate().book:0);
   if(!n){ state.format="8"; n=8; }
-  const def = document.getElementById("deflayout").value || "single";
+  const dl=document.getElementById("deflayout"); const def=(dl&&dl.value)||"single";
   if(!Array.isArray(state.pages)) state.pages=[];
   while(state.pages.length<n) state.pages.push({layout:def,imgs:[null,null]});
   state.pages.length=n;
@@ -2124,10 +2125,11 @@ document.addEventListener("keydown",(e)=>{
   function applyTheme(t){
     const hk=(t==="hk");
     document.body.setAttribute("data-theme", hk?"hk":"hb");
-    if(title) title.innerHTML = hk ? 'Victoria <span class="rip">Studio</span>' : 'The Honey <span class="rip">Bunny</span>';
+    if(title) title.innerHTML = hk ? 'Harbour &amp; <span class="rip">Bay</span>' : 'The Honey <span class="rip">Bunny</span>';
     if(tmeta) tmeta.setAttribute("content", hk?"#123328":"#1a1614");
   }
-  let cur="hb"; try{ if(localStorage.getItem(KEY)==="hk") cur="hk"; }catch(e){}
+  // Default theme is HK (Harbour & Bay); respect an explicit saved "hb" choice.
+  let cur="hk"; try{ if(localStorage.getItem(KEY)==="hb") cur="hb"; }catch(e){}
   applyTheme(cur);
   const tog=document.getElementById("themeToggle");
   if(tog) tog.addEventListener("click",()=>{
@@ -2293,7 +2295,7 @@ const REBUILD_PROMPT=[
 "Build a single-file, offline, browser-based photo-zine maker called \"The Honey Bunny\" (inspired by Dirty Little Zine). One index.html: all HTML, CSS, and JavaScript inline, no external libraries, no build step, no network calls. It must run by double-clicking the file in any modern browser. Auto-save to localStorage under a versioned key.",
 "",
 "AESTHETIC: retro/editorial print zine. Off-white paper #f4efe6 with a faint diagonal texture, dark charcoal ink #1a1614, red accent #e2483d, blue accent #2b5f9e. Courier/monospace UI, Georgia serif for the masthead and cover title, hard offset box-shadows. Header reads \"The Honey Bunny\" (\"Bunny\" in red).",
-"THEME TOGGLE (two skins): support a second cosmetic skin, 'Victoria Studio' (a 1960s Hong Kong theme), selectable via a small pill toggle switch in the masthead actions. IMPLEMENT AS CSS-VARIABLE OVERRIDES ONLY so it can never break function: the default theme sets --ink/--paper/--paper2/--accent/--accent2/--line/--shadow on :root; a body[data-theme=\"hk\"] block re-maps those same variables (jade dark #123328, ceramic green #254d3e as accent2, seal red #c02b26, milk-tea paper #f3eee3, cream panel #fcfaf4) plus a handful of theme-specific rules: a micro-mosaic floor-tile background, a CJK-friendly font stack, a jade masthead with a red/white/green terrazzo trim strip along its bottom edge (::after repeating-linear-gradient), square (not pill) masthead buttons, and jade drawer/inspector. HK-only brand bits live in the masthead but are hidden in the default theme and shown under [data-theme=hk]: a red 'HK 852 香港' seal badge sitting INLINE next to the title on the same baseline (in a .title-row flex next to the h1, NOT centered against the whole two-line block) and a Chinese subtitle '維多利亞出版' under the title; the h1 text swaps to 'Victoria Studio' (Studio in red) via JS. The theme toggle is a compact pill switch placed at the END of the masthead action buttons (after Print/Save PDF), separated by a thin left divider, with a tiny HB/VS label — keep it sleek, not a big control. The toggle stores its choice in a SEPARATE localStorage key ('zine-theme') — NOT in the zine state — so 'Start over' and saved-HTML exports never reset or carry the skin; on boot, read that key and apply data-theme + swap the h1 + update the theme-color meta (#123328 vs #1a1614). Everything else (imposition, print, canvas, exports, editor, drag, viewer) is shared and untouched by the skin.",
+"THEME TOGGLE (two skins): support a second cosmetic skin, 'Victoria Studio' (a 1960s Hong Kong theme), selectable via a small pill toggle switch in the masthead actions. IMPLEMENT AS CSS-VARIABLE OVERRIDES ONLY so it can never break function: the default theme sets --ink/--paper/--paper2/--accent/--accent2/--line/--shadow on :root; a body[data-theme=\"hk\"] block re-maps those same variables (jade dark #123328, ceramic green #254d3e as accent2, seal red #c02b26, milk-tea paper #f3eee3, cream panel #fcfaf4) plus a handful of theme-specific rules: a micro-mosaic floor-tile background, a CJK-friendly font stack, a jade masthead with a red/white/green terrazzo trim strip along its bottom edge (::after repeating-linear-gradient), square (not pill) masthead buttons, and jade drawer/inspector. HK-only brand bits live in the masthead but are hidden in the default theme and shown under [data-theme=hk]: a red 'HK 852 香港' seal badge sitting INLINE next to the title on the same baseline (in a .title-row flex next to the h1, NOT centered against the whole two-line block) and a Chinese subtitle '維多利亞出版' under the title; the h1 text swaps to 'Victoria Studio' (Studio in red) via JS. The theme toggle is a compact pill switch placed at the END of the masthead action buttons (after Print/Save PDF), separated by a thin left divider, with a tiny HB/VS label — keep it sleek, not a big control. The toggle stores its choice in a SEPARATE localStorage key ('zine-theme') — NOT in the zine state — so 'Start over' and saved-HTML exports never reset or carry the skin. DEFAULT THEME IS HK (Harbour & Bay): boot defaults cur='hk' unless an explicit saved 'hb' exists; the static body[data-theme=hk], jade theme-color meta (#123328), and h1 seed the HK look so there's no flash of the charcoal theme on load. The HK masthead shows title 'Harbour & Bay' (Bay in red) with a small muted '香港852' tag tucked under the title (absolutely positioned so it doesn't grow the header; the title-block reserves its height so title+tag stay vertically centred against the buttons). Toggling to HB swaps h1 to 'The Honey Bunny' and theme-color to #1a1614. Everything else (imposition, print, canvas, exports, editor, drag, viewer) is shared and untouched by the skin.",
 "",
 "TOP TOOLBAR: superseded by LAYOUT / CHROME above — do not add a wide top toolbar; use the hamburger drawer for Format/Paper/Default-layout/templates/alignment/export and keep only Download + Print in the masthead.",
 "",
