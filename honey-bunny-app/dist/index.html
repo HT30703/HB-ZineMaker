@@ -949,8 +949,8 @@ function makeDraggable(el, container, pos, selId, dragWhole){
 }
 
 /* ---------------- images ---------------- */
-/* ONE persistent, app-level file input (web fallback). Created once and never removed, so a
-   re-render between opening the picker and the async 'change' can't destroy it. */
+/* One persistent, app-level file input. Created once and never removed, so a re-render between
+   opening the picker and the async 'change' can't destroy it (that was the cover-photo bug). */
 var _picker=null, _pickerCb=null;
 function ensurePicker(){
   if(_picker) return _picker;
@@ -960,26 +960,7 @@ function ensurePicker(){
   document.body.appendChild(_picker);
   return _picker;
 }
-/* In the packaged Mac app the HTML <input type=file> change event is unreliable in the WebView
-   (picker opens, file never arrives). When running inside Tauri, use its NATIVE dialog + fs to
-   pick and read the file, then hand loadImg a real File built from the bytes. On the web, fall
-   back to the persistent hidden input. */
-function isTauri(){ return !!(window.__TAURI__ && window.__TAURI__.dialog && window.__TAURI__.fs); }
-async function tauriPick(cb){
-  try{
-    const T=window.__TAURI__;
-    const sel=await T.dialog.open({ multiple:false, directory:false, filters:[{name:"Images",extensions:["jpg","jpeg","png","gif","webp","bmp","heic","heif","avif","tif","tiff"]}] });
-    if(!sel) return;                                  // cancelled
-    const path=Array.isArray(sel)?sel[0]:sel;
-    const bytes=await T.fs.readFile(path);            // Uint8Array
-    const name=(""+path).split(/[\\/]/).pop()||"image";
-    const ext=(name.split(".").pop()||"").toLowerCase();
-    const mime = ext==="png"?"image/png": (ext==="gif"?"image/gif": (ext==="webp"?"image/webp": (ext==="bmp"?"image/bmp":"image/jpeg")));
-    const file=new File([bytes], name, {type:mime});  // real File -> loadImg works unchanged
-    cb(file);
-  }catch(e){ console.error("tauri pick failed",e); toast("Couldn't open that image"); }
-}
-function openFilePicker(cb){ if(isTauri()){ tauriPick(cb); return; } const p=ensurePicker(); _pickerCb=cb; p.click(); }
+function openFilePicker(cb){ const p=ensurePicker(); _pickerCb=cb; p.click(); }
 function loadImg(file,cb){
   if(!file) return;
   // Don't hard-gate on file.type — the desktop (Tauri) WebView often reports an EMPTY MIME type
@@ -2328,7 +2309,7 @@ const REBUILD_PROMPT=[
 "DRAGGABLE COVER ELEMENTS (title text, name text, QR box): each is wrapped in a positioned .dwrap with a ✥ drag handle. Provide TWO drag methods: (a) the handle drags immediately; (b) dragging the element BODY also moves it, but only after the pointer passes a small ~6px threshold, so a plain click/tap still selects and (for text fields) focuses for editing. Both methods share the same move/snap/guide/save logic and support mouse + touch. Position is stored as {x,y%} + scale s; clamp x,y to 4-96%.",
 "MOBILE / TOUCH SUPPORT: the app must be fully usable on phones/tablets in a mobile browser. (1) Pan/zoom: implement touch events alongside mouse — one-finger drag pans a photo/cover background; TWO-FINGER PINCH zooms it (track the two touch points' distance ratio against the scale at gesture start, clamp scale 1-4, re-clamp pan). Give pannable surfaces touch-action:none so the browser doesn't hijack the gesture for page scroll/zoom. (2) Selection on touch: because the pan handler calls preventDefault (which suppresses the synthetic mousedown), add explicit touchstart listeners to select cover/back photos and their wraps, and onfocus selection for the title/name text fields. (3) Text-box/QR drag handles must listen for touchstart/touchmove/touchend (they already do for mouse). (4) Interior photos keep on-screen +/- /reset buttons for zoom without a wheel. (5) Responsive @media (max-width:640px): single-column spread, full-width masthead action buttons, cap the bottom inspector at ~52vh with overflow-y:auto so it doesn't cover the screen, add extra bottom padding to .wrap, larger nudge-pad tap targets. Do NOT force a fixed .canvas height on mobile — keep the printed-panel aspect-ratio so the preview stays true. (6) When the hamburger DRAWER is open, HIDE the fixed bottom inspector (toggle a body.drawer-open class in openDrawer/closeDrawer and hide .inspector under it) and give the drawer generous bottom padding (incl. env(safe-area-inset-bottom)) — otherwise the fixed inspector (z-index above the drawer) sits over the drawer's lower content and hides the 'Start over' button on phones (bug to avoid).",
 "",
-"FRONT COVER: editable title + optional background photo (same pan/zoom, clamped). BACK COVER: editable name/handle + a QR code + optional background photo. The QR encodes a URL entered in the bottom panel but the URL text is NOT printed. Default positions spaced apart (name high, QR lower). Generate QR codes in PURE VANILLA JS (byte mode, error-correction M, auto version) — no external QR library. To ADD a cover photo, tap the empty cover ANYWHERE except the title/name/QR boxes or the on-image controls. CRITICAL for the packaged desktop app: use ONE app-level PERSISTENT hidden file input (created once, appended to body, never removed) with a stored callback set at click time — do NOT create a fresh <input> per cover instance. On covers, selecting/tapping re-renders the cover wrap, which would DESTROY a per-instance input (and its change handler) before the async 'change' fires, so the chosen photo silently never landed in the app (picker opened, photo didn't appear — interiors were unaffected because they don't re-render between click and change). The persistent input survives re-renders; its change reads files[0], calls the stored callback, then resets value so the same file can be re-picked. DESKTOP-APP FILE IMPORT: in a packaged Tauri app the HTML <input type=file> change event proved UNRELIABLE (picker opens, file never arrives), which broke cover photo import in the .app even though the web build worked. So route ALL image picking through one openFilePicker(cb) that, when window.__TAURI__ is present, uses Tauri's NATIVE dialog.open + fs.readFile to get bytes and hands loadImg a real File built from them; on the web it falls back to the persistent hidden input. This needs the app to add tauri-plugin-dialog + tauri-plugin-fs (registered in main.rs, granted in capabilities, withGlobalTauri:true) — every add/replace path (interior slot tap, interior Replace, cover/back empty-tap, cover/back Replace, inspector Add/Replace) goes through openFilePicker so it works identically in app and web. CRITICAL: open every file picker through a shared helper that APPENDS the <input type=file> to the DOM before calling .click() (then removes it) — a detached input's .click() is ignored by the desktop/Tauri WebView, which is why the empty-cover tap opened nothing in the Mac app while the button worked.",
+"FRONT COVER: editable title + optional background photo (same pan/zoom, clamped). BACK COVER: editable name/handle + a QR code + optional background photo. The QR encodes a URL entered in the bottom panel but the URL text is NOT printed. Default positions spaced apart (name high, QR lower). Generate QR codes in PURE VANILLA JS (byte mode, error-correction M, auto version) — no external QR library. To ADD a cover photo, tap the empty cover ANYWHERE except the title/name/QR boxes or the on-image controls. CRITICAL for the packaged desktop app: use ONE app-level PERSISTENT hidden file input (created once, appended to body, never removed) with a stored callback set at click time — do NOT create a fresh <input> per cover instance. On covers, selecting/tapping re-renders the cover wrap, which would DESTROY a per-instance input (and its change handler) before the async 'change' fires, so the chosen photo silently never landed in the app (picker opened, photo didn't appear — interiors were unaffected because they don't re-render between click and change). The persistent input survives re-renders; its change reads files[0], calls the stored callback, then resets value so the same file can be re-picked. Every add/replace path (interior slot tap, interior Replace, cover/back empty-tap, cover/back Replace, inspector Add/Replace) goes through this one openFilePicker so behaviour is identical everywhere. CRITICAL: open every file picker through a shared helper that APPENDS the <input type=file> to the DOM before calling .click() (then removes it) — a detached input's .click() is ignored by the desktop/Tauri WebView, which is why the empty-cover tap opened nothing in the Mac app while the button worked.",
 "",
 "SELECTION + FIXED BOTTOM INSPECTOR PANEL (Dirty-Little-Zine style): click any cover element (title, name, QR, or a photo) to select it; a fixed panel at the bottom shows controls: Text -> Font (6 system fonts only: Serif/Sans/Mono/Slab/Condensed/Script; no web fonts), Text colour (Black/White), Alignment (Left/Centre/Right), Size (A-/A+ buttons + slider). QR -> link field + size. Photo -> Add / Replace / Reset position / Remove. Cover/back photos ALSO get the same on-image hover controls as interior photos (zoom +/-, reset, Fill/Fit toggle, replace, delete), overlaid on the photo. Each cover has a small \"+ photo\" chip (top-left, on hover, WHITE background not cream) to reliably add/select a cover photo even when name/QR cover the panel. Move elements by dragging a move handle; elements are positioned as {x,y,s} percentages, centered via translate(-50%,-50%) scale(s). Add snapping to 10/25/33/50/66/75/90% with a thin guide line. Text boxes auto-fit width to content (no clipping, no forced wrap of single words), and cover text sizes use the SAME panel-height ratios as print (title ~4% panel height, name ~3%, QR ~17.6%) so the editor is WYSIWYG.",
 "",
@@ -2399,30 +2380,41 @@ document.addEventListener("mousedown", maybeDeselect);
 document.addEventListener("touchstart", maybeDeselect, {passive:true});
 
 /* ---------------- boot ---------------- */
+function safeRenderAll(){
+  rebuildFormatDropdown();
+  var pv=document.getElementById("paper"); if(pv) pv.value=state.paper;
+  var cm=document.getElementById("cropMarks"); if(cm) cm.value=state.cropMarks?"on":"off";
+  applyEditZoom();
+  updateNudgeReadout();
+  ensurePages();
+  renderEditor();
+  renderTplGrid();
+  validateTpl();
+  renderInspector();
+}
 (function boot(){
   // a saved-zine HTML file embeds its state here; prefer it over localStorage on first load
   let embedded=null;
   try{ if(window.__EMBEDDED_ZINE__){ embedded=window.__EMBEDDED_ZINE__; } }catch(e){}
   try{ hydrate(embedded||load()); }catch(e){ console.error("load failed",e); try{localStorage.removeItem("zinepress2");}catch(_){} state.cover=freshCover(); state.back=freshBack(); state.savedTemplates=[]; state.format="8"; }
-  if(embedded){ save(); }   // persist the embedded zine into this browser
-  rebuildFormatDropdown();
-  document.getElementById("paper").value=state.paper;
-  document.getElementById("cropMarks").value=state.cropMarks?"on":"off";
-  applyEditZoom();
-  updateNudgeReadout();
-  ensurePages();
-  try{ renderEditor(); }
-  catch(e){
-    // never leave a blank editor: reset to a clean 8-page zine and try once more
-    console.error("renderEditor failed on boot",e);
-    try{ state.format="8"; state.cover=freshCover(); state.back=freshBack(); state.pages=[]; currentSpread=0; ensurePages(); renderEditor(); }
-    catch(e2){ console.error("second render failed",e2); }
+  if(embedded){ try{ save(); }catch(_){} }   // persist the embedded zine into this browser
+  try{
+    safeRenderAll();
+  }catch(e){
+    // Never leave a blank editor: reset to a clean 8-page zine and render again. Any single
+    // startup error (bad saved state, a missing element, an app WebView quirk) must not blank the app.
+    console.error("boot render failed, resetting to clean state",e);
+    try{ localStorage.removeItem("zinepress2"); }catch(_){}
+    try{ state.format="8"; state.paper=state.paper||"letter"; state.cover=freshCover(); state.back=freshBack(); state.pages=[]; state.savedTemplates=state.savedTemplates||[]; currentSpread=0; selection=null; safeRenderAll(); }
+    catch(e2){ console.error("clean render also failed",e2); }
   }
-  renderTplGrid();
-  validateTpl();
-  renderInspector();
-  historyInit();
+  try{ historyInit(); }catch(_){}
 })();
+/* last-resort safety net: if any uncaught error slips through and the pages never rendered,
+   force a clean editor so the app is never a blank window. */
+window.addEventListener("error",function(){
+  try{ var host=document.getElementById("pages"); if(host && !host.children.length){ state.format="8"; state.cover=freshCover(); state.back=freshBack(); state.pages=[]; currentSpread=0; ensurePages(); renderEditor(); } }catch(_){}
+});
 
 /* ---------------- PWA: offline service worker + install prompt ---------------- */
 (function pwa(){
