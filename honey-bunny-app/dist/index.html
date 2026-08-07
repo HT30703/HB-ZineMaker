@@ -119,6 +119,24 @@
   @keyframes splashPop{from{opacity:0;transform:scale(.92);}to{opacity:1;transform:scale(1);}}
   @media (prefers-reduced-motion:reduce){#splashLogo{animation:none;}}
 
+  /* Ko-fi "Give" button — floating bottom-right, shown on web and the Mac app (revealed by boot JS).
+     Sits above the fixed inspector bar so it's never covered. */
+  .kofi-give{
+    position:fixed;right:18px;bottom:86px;z-index:120;
+    display:inline-flex;align-items:center;gap:7px;
+    padding:10px 16px;border-radius:999px;
+    font-family:inherit;font-size:13px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;
+    text-decoration:none;cursor:pointer;
+    background:var(--accent);color:#fff;border:2px solid var(--ink);
+    box-shadow:3px 3px 0 var(--shadow);
+    transition:transform .08s,box-shadow .12s,background .15s;
+  }
+  .kofi-give:hover{background:#c8392f;}
+  .kofi-give:active{transform:translateY(2px);box-shadow:1px 1px 0 var(--shadow);}
+  .kofi-give .kofi-heart{font-size:14px;line-height:1;}
+  body[data-theme="hk"] .kofi-give{border-radius:6px;border-color:var(--ink);}
+  @media (max-width:560px){ .kofi-give{right:12px;bottom:78px;padding:9px 13px;font-size:12px;} }
+
   header.masthead{
     border:3px solid var(--ink); background:var(--ink); color:var(--paper);
     padding:14px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;
@@ -613,6 +631,12 @@
 
   <footer class="foot">Runs entirely in your browser &middot; nothing is uploaded anywhere.</footer>
 </div>
+
+<!-- Ko-fi tip button — floats bottom-right on the WEB app only. Hidden by default; the boot code
+     reveals it only when running on http/https (never in the Tauri Mac app, which is file://tauri://). -->
+<a id="kofiGive" class="kofi-give" href="https://ko-fi.com/ht30703" target="_blank" rel="noopener noreferrer" hidden>
+  <span class="kofi-heart" aria-hidden="true">♥</span><span class="kofi-lbl">Give</span>
+</a>
 
 <div id="inspector" class="inspector">
   <div class="insp-inner">
@@ -2481,6 +2505,23 @@ window.addEventListener("error",function(){
   window.addEventListener("load",function(){ setTimeout(go,1500); });
   // hard fallback: never let the splash linger past 3.5s regardless of load timing
   setTimeout(go,3500);
+})();
+
+/* ---------------- Ko-fi "Give" button ----------------
+   Shown everywhere — web app and the packaged Mac app — so anyone can tip.
+   The plain <a target=_blank> works on the web; in the Tauri WebView a bare link can be a no-op,
+   so we also handle the click via window.open, which the desktop webview hands to the system browser. */
+(function kofi(){
+  try{
+    var b=document.getElementById("kofiGive");
+    if(!b) return;
+    b.hidden=false;
+    b.addEventListener("click",function(ev){
+      var url=b.getAttribute("href");
+      try{ var w=window.open(url,"_blank","noopener"); if(w){ ev.preventDefault(); } }
+      catch(e){ /* let the default <a> navigation take over */ }
+    });
+  }catch(e){}
 })();
 
 /* ---------------- PWA: offline service worker + install prompt ---------------- */
