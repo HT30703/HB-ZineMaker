@@ -1,2 +1,2 @@
-# Dia-Zine-Maker---The-Honey-Bunny
-Zine Maker made with Dia named The Honey Bunny lol
+# Dia-Zine-Maker - Harbour & Bay
+Zine Maker app
