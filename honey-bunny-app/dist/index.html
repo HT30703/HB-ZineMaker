@@ -10,9 +10,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Honey Bunny">
-<link rel="apple-touch-icon" href="icon.svg">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-title" content="Harbour & Bay">
+<link rel="apple-touch-icon" href="brand-icon.png">
+<link rel="icon" href="brand-icon.png" type="image/png">
 <style>
   :root{
     --ink:#1a1614; --paper:#f4efe6; --paper2:#eae2d4;
@@ -40,7 +40,11 @@
     background-position:0 0,0 10px,10px -10px,-10px 0,0 0,0 0;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,var(--hk-font),"Courier New",monospace;
   }
-  body[data-theme="hk"] header.masthead{background:var(--jade-dark);box-shadow:0 6px 18px var(--shadow);position:relative;padding:12px 22px;}
+  body[data-theme="hk"] header.masthead{background:var(--jade-dark);box-shadow:0 6px 18px var(--shadow);position:relative;padding:12px 22px;align-items:center;}
+  /* the trim strip reads as a bottom frame, so pad the header floor a touch and pull the top in;
+     this drops the flex-centering axis to the OPTICAL centre of the visible sign, so the hamburger,
+     brand, buttons and toggle all sit centred against what the eye sees — not the raw box. */
+  body[data-theme="hk"] header.masthead{padding-top:10px;padding-bottom:15px;}
   body[data-theme="hk"] header.masthead::after{
     content:"";position:absolute;bottom:-3px;left:0;right:0;height:3px;
     background:repeating-linear-gradient(90deg,var(--jade-mid),var(--jade-mid) 14px,var(--paper) 14px,var(--paper) 18px,var(--accent) 18px,var(--accent) 28px);
@@ -55,6 +59,17 @@
   body[data-theme="hk"] .inspector{border-top-color:var(--accent);}
   /* HK-only brand bits: hidden in the default theme, shown here */
   .brand-frame{display:flex;align-items:center;gap:12px;}
+  /* white-outline neon crest mark, left of the brand name — HK theme only */
+  .brand-mark{display:none;}
+  body[data-theme="hk"] .brand-mark{
+    display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+    height:64px;width:auto;margin-left:-4px;align-self:center;
+  }
+  /* the user's hand-drawn trace: white lines on a transparent background, so it drops straight
+     onto the jade header — no filter or blend needed. */
+  body[data-theme="hk"] .brand-mark .brand-mark-img{
+    height:100%;width:auto;object-fit:contain;display:block;opacity:.96;
+  }
   .title-row{display:flex;align-items:center;gap:6px;position:relative;}
   .brand-zh,.seal-badge{display:none;}
   body[data-theme="hk"] .brand-zh{display:block;font-size:11px;color:rgba(255,255,255,.7);letter-spacing:3px;font-weight:400;margin-top:2px;}
@@ -118,7 +133,11 @@
   /* the fixed bottom inspector must not sit on top of the open menu (it hid the Start over button on phones) */
   body.drawer-open .inspector{display:none !important;}
   .drawer-hd{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:var(--ink);color:var(--paper);}
-  .drawer-title{font-size:12px;letter-spacing:3px;text-transform:uppercase;font-weight:bold;}
+  .drawer-title{font-size:12px;letter-spacing:3px;text-transform:uppercase;font-weight:bold;display:flex;align-items:center;gap:10px;}
+  /* hand-drawn crest (white on transparent) sits fine on the jade/ink drawer header; hidden by
+     default, shown only in the HK theme to match the masthead mark. */
+  .drawer-logo{display:none;}
+  body[data-theme="hk"] .drawer-logo{display:block;height:34px;width:auto;flex:0 0 auto;opacity:.95;}
   .drawer-close{background:transparent;border:none;color:var(--paper);font-size:26px;line-height:1;cursor:pointer;padding:0 4px;}
   .drawer-close:hover{color:var(--accent);}
   .drawer-body{padding:18px;display:flex;flex-direction:column;gap:16px;}
@@ -405,6 +424,9 @@
         </div>
       </div>
     </div>
+    <span class="brand-mark" aria-hidden="true">
+      <img class="brand-mark-img" src="brand-mark.png" alt="">
+    </span>
     <div class="mast-actions">
       <button class="btn-ghost" id="installBtn" style="display:none;">Install app</button>
       <button class="btn-ghost" id="viewBtn">Digital zine preview</button>
@@ -419,7 +441,7 @@
   <div class="drawer-scrim" id="drawerScrim"></div>
   <aside class="drawer" id="drawer" aria-hidden="true">
     <div class="drawer-hd">
-      <span class="drawer-title">Menu &amp; Settings</span>
+      <span class="drawer-title"><img class="drawer-logo" src="brand-mark.png" alt="">Menu &amp; Settings</span>
       <button type="button" class="drawer-close" id="drawerClose" aria-label="Close menu">&times;</button>
     </div>
     <div class="drawer-body">

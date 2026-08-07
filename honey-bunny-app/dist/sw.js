@@ -1,12 +1,13 @@
 /* The Honey Bunny — offline service worker.
    The whole app is self-contained in index.html (no external libraries),
    so caching the shell makes it work fully offline after the first load. */
-const CACHE = "honey-bunny-v1";
+const CACHE = "honey-bunny-v3";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./icon.svg"
+  "./brand-icon.png",
+  "./brand-mark.png"
 ];
 
 self.addEventListener("install", (e) => {
