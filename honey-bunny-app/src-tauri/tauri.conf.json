@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "The Honey Bunny",
+  "productName": "Harbour & Bay",
   "version": "1.0.0",
   "identifier": "com.honeybunny.zinemaker",
   "build": {
@@ -10,7 +10,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "The Honey Bunny",
+        "title": "Harbour & Bay",
         "width": 1200,
         "height": 860,
         "minWidth": 380,
@@ -32,6 +32,6 @@
     ],
     "category": "GraphicsAndDesign",
     "shortDescription": "A little offline zine maker.",
-    "longDescription": "The Honey Bunny — one sheet, one cut, a whole book. An offline photo-zine maker."
+    "longDescription": "Harbour & Bay — one sheet, one cut, a whole book. An offline photo-zine maker."
   }
 }
