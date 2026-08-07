@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>The Honey Bunny</title>
+<title>Harbour &amp; Bay · 香港</title>
 <meta name="description" content="A little offline zine maker — one sheet, one cut, a whole book.">
-<meta name="theme-color" content="#1a1614">
+<meta name="theme-color" content="#123328">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Honey Bunny">
-<link rel="apple-touch-icon" href="icon.svg">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-title" content="Harbour & Bay">
+<link rel="apple-touch-icon" href="brand-icon.png">
+<link rel="icon" href="brand-icon.png" type="image/png">
 <style>
   :root{
     --ink:#1a1614; --paper:#f4efe6; --paper2:#eae2d4;
@@ -40,7 +40,11 @@
     background-position:0 0,0 10px,10px -10px,-10px 0,0 0,0 0;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,var(--hk-font),"Courier New",monospace;
   }
-  body[data-theme="hk"] header.masthead{background:var(--jade-dark);box-shadow:0 6px 18px var(--shadow);position:relative;padding:12px 22px;}
+  body[data-theme="hk"] header.masthead{background:var(--jade-dark);box-shadow:0 6px 18px var(--shadow);position:relative;padding:12px 22px;align-items:center;}
+  /* the trim strip reads as a bottom frame, so pad the header floor a touch and pull the top in;
+     this drops the flex-centering axis to the OPTICAL centre of the visible sign, so the hamburger,
+     brand, buttons and toggle all sit centred against what the eye sees — not the raw box. */
+  body[data-theme="hk"] header.masthead{padding-top:10px;padding-bottom:15px;}
   body[data-theme="hk"] header.masthead::after{
     content:"";position:absolute;bottom:-3px;left:0;right:0;height:3px;
     background:repeating-linear-gradient(90deg,var(--jade-mid),var(--jade-mid) 14px,var(--paper) 14px,var(--paper) 18px,var(--accent) 18px,var(--accent) 28px);
@@ -55,17 +59,30 @@
   body[data-theme="hk"] .inspector{border-top-color:var(--accent);}
   /* HK-only brand bits: hidden in the default theme, shown here */
   .brand-frame{display:flex;align-items:center;gap:12px;}
-  .title-row{display:flex;align-items:center;gap:10px;}
+  /* white-outline neon crest mark, left of the brand name — HK theme only */
+  .brand-mark{display:none;}
+  body[data-theme="hk"] .brand-mark{
+    display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+    height:64px;width:auto;margin-left:-4px;align-self:center;
+  }
+  /* the user's hand-drawn trace: white lines on a transparent background, so it drops straight
+     onto the jade header — no filter or blend needed. */
+  body[data-theme="hk"] .brand-mark .brand-mark-img{
+    height:100%;width:auto;object-fit:contain;display:block;opacity:.96;
+  }
+  .title-row{display:flex;align-items:center;gap:6px;position:relative;}
   .brand-zh,.seal-badge{display:none;}
   body[data-theme="hk"] .brand-zh{display:block;font-size:11px;color:rgba(255,255,255,.7);letter-spacing:3px;font-weight:400;margin-top:2px;}
+  /* tag hangs just under the title as a zero-height overflow line, so it never grows the masthead */
   body[data-theme="hk"] .seal-badge{
-    display:inline-flex;align-items:center;gap:4px;
-    font-family:monospace,var(--hk-font);font-size:10px;font-weight:bold;letter-spacing:1px;
-    color:var(--accent);border:1.5px solid var(--accent);padding:3px 8px;border-radius:3px;
-    background:rgba(255,255,255,.95);box-shadow:0 0 0 1px var(--accent);text-transform:uppercase;
-    white-space:nowrap;line-height:1;
+    display:block;position:absolute;top:100%;left:2px;margin-top:-1px;
+    font-family:var(--hk-font),monospace;font-size:11px;font-weight:400;letter-spacing:0;
+    color:rgba(255,255,255,.6);white-space:nowrap;line-height:1;pointer-events:none;
   }
   .title-block{display:flex;flex-direction:column;}
+  /* HK: reserve the tag's height under the title so the block's centre still matches the row centre
+     (keeps the title vertically balanced against the hamburger + action buttons; no header growth). */
+  body[data-theme="hk"] .title-block{padding-bottom:13px;}
   /* theme toggle switch — compact, divider-separated */
   .theme-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-size:9px;letter-spacing:1.4px;text-transform:uppercase;font-weight:bold;color:var(--mast-fg);opacity:.85;margin-left:6px;padding-left:12px;border-left:1px solid rgba(255,255,255,.28);transition:opacity .15s;}
   .theme-toggle:hover{opacity:1;}
@@ -84,6 +101,23 @@
     color:var(--ink); font-family:"Courier New",ui-monospace,monospace; min-height:100vh;
   }
   .wrap{max-width:1180px;margin:0 auto;padding:26px 22px 170px;}
+
+  /* startup splash — jade fill + crest, fades out shortly after load */
+  #splash{
+    position:fixed;inset:0;z-index:9999;
+    background:#123328;
+    display:flex;align-items:center;justify-content:center;
+    opacity:1;transition:opacity .5s ease;
+    -webkit-user-select:none;user-select:none;pointer-events:none;
+  }
+  #splash.hide{opacity:0;}
+  #splash.gone{display:none;}
+  #splashLogo{
+    width:min(74vw,410px);height:auto;display:block;
+    animation:splashPop .6s ease both;
+  }
+  @keyframes splashPop{from{opacity:0;transform:scale(.92);}to{opacity:1;transform:scale(1);}}
+  @media (prefers-reduced-motion:reduce){#splashLogo{animation:none;}}
 
   header.masthead{
     border:3px solid var(--ink); background:var(--ink); color:var(--paper);
@@ -116,7 +150,11 @@
   /* the fixed bottom inspector must not sit on top of the open menu (it hid the Start over button on phones) */
   body.drawer-open .inspector{display:none !important;}
   .drawer-hd{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:var(--ink);color:var(--paper);}
-  .drawer-title{font-size:12px;letter-spacing:3px;text-transform:uppercase;font-weight:bold;}
+  .drawer-title{font-size:12px;letter-spacing:3px;text-transform:uppercase;font-weight:bold;display:flex;align-items:center;gap:10px;}
+  /* hand-drawn crest (white on transparent) sits fine on the jade/ink drawer header; hidden by
+     default, shown only in the HK theme to match the masthead mark. */
+  .drawer-logo{display:none;}
+  body[data-theme="hk"] .drawer-logo{display:block;height:34px;width:auto;flex:0 0 auto;opacity:.95;}
   .drawer-close{background:transparent;border:none;color:var(--paper);font-size:26px;line-height:1;cursor:pointer;padding:0 4px;}
   .drawer-close:hover{color:var(--accent);}
   .drawer-body{padding:18px;display:flex;flex-direction:column;gap:16px;}
@@ -391,19 +429,26 @@
   }
 </style>
 </head>
-<body>
+<body data-theme="hk">
+<!-- Splash: jade screen with the crest, fades out ~2s after load. Self-dismisses on a timer AND
+     a hard fallback so it can never get stuck covering the editor. -->
+<div id="splash" aria-hidden="true">
+  <img id="splashLogo" src="brand-icon.png" alt="Harbour & Bay">
+</div>
 <div class="wrap">
   <header class="masthead">
     <button type="button" class="ham" id="menuBtn" aria-label="Open menu" title="Menu &amp; settings"><span></span><span></span><span></span></button>
     <div class="brand-frame">
       <div class="title-block">
         <div class="title-row">
-          <h1 id="brandTitle">The Honey <span class="rip">Bunny</span></h1>
-          <span class="seal-badge">HK 852 香港</span>
+          <h1 id="brandTitle">Harbour &amp; <span class="rip">Bay</span></h1>
+          <span class="seal-badge">香港852</span>
         </div>
-        <span class="brand-zh">維多利亞出版</span>
       </div>
     </div>
+    <span class="brand-mark" aria-hidden="true">
+      <img class="brand-mark-img" src="brand-mark.png" alt="">
+    </span>
     <div class="mast-actions">
       <button class="btn-ghost" id="installBtn" style="display:none;">Install app</button>
       <button class="btn-ghost" id="viewBtn">Digital zine preview</button>
@@ -418,7 +463,7 @@
   <div class="drawer-scrim" id="drawerScrim"></div>
   <aside class="drawer" id="drawer" aria-hidden="true">
     <div class="drawer-hd">
-      <span class="drawer-title">Menu &amp; Settings</span>
+      <span class="drawer-title"><img class="drawer-logo" src="brand-mark.png" alt="">Menu &amp; Settings</span>
       <button type="button" class="drawer-close" id="drawerClose" aria-label="Close menu">&times;</button>
     </div>
     <div class="drawer-body">
@@ -768,7 +813,7 @@ function normImg(e){
 function ensurePages(){
   let n = (state.format==="8") ? 8 : (activeTemplate()?activeTemplate().book:0);
   if(!n){ state.format="8"; n=8; }
-  const def = document.getElementById("deflayout").value || "single";
+  const dl=document.getElementById("deflayout"); const def=(dl&&dl.value)||"single";
   if(!Array.isArray(state.pages)) state.pages=[];
   while(state.pages.length<n) state.pages.push({layout:def,imgs:[null,null]});
   state.pages.length=n;
@@ -840,10 +885,8 @@ function qrGroup(t){
   return grp("QR link",inp);
 }
 function photoGroup(t){
-  const add=document.createElement("label"); add.className="ins-btn"; add.textContent=t.bg?"Replace photo":"Add photo";
-  const fi=document.createElement("input"); fi.type="file"; fi.accept="image/*"; fi.style.display="none";
-  fi.onchange=(e)=>loadImg(e.target.files[0],(entry)=>{ t.bg=entry; save(); renderEditor(); });
-  add.appendChild(fi);
+  const add=document.createElement("button"); add.className="ins-btn"; add.textContent=t.bg?"Replace photo":"Add photo";
+  add.onclick=()=>openFilePicker((f)=>loadImg(f,(entry)=>{ t.bg=entry; save(); renderEditor(); }));
   const nodes=[add];
   if(t.bg){
     const reset=document.createElement("button"); reset.className="ins-btn"; reset.textContent="Reset position"; reset.onclick=()=>{ t.bg.ox=50;t.bg.oy=50;t.bg.scale=1; save(); renderEditor(); };
@@ -951,10 +994,8 @@ function makeDraggable(el, container, pos, selId, dragWhole){
 }
 
 /* ---------------- images ---------------- */
-/* ONE persistent, app-level file input. Created once and never removed, so a re-render of the
-   cover/page between opening the picker and the async 'change' event can't destroy the element
-   or its handler (that was the app-only bug: covers re-rendered on select, killing a per-instance
-   input's change before the file arrived, so the photo never landed). */
+/* One persistent, app-level file input. Created once and never removed, so a re-render between
+   opening the picker and the async 'change' can't destroy it (that was the cover-photo bug). */
 var _picker=null, _pickerCb=null;
 function ensurePicker(){
   if(_picker) return _picker;
@@ -1256,11 +1297,11 @@ function imageSlot(pageIdx,slotIdx){
     del.onclick=(e)=>{ e.stopPropagation(); pg.imgs[slotIdx]=null; save(); renderEditor(); };
     ctrls.appendChild(zo); ctrls.appendChild(zi); ctrls.appendChild(rs); ctrls.appendChild(ft); ctrls.appendChild(rp); ctrls.appendChild(del); slot.appendChild(ctrls);
   } else {
-    // empty: a full-cover file input so a tap anywhere opens the picker (no photo to pan yet)
+    // empty: tap to open the picker (routes through openFilePicker -> native dialog in the app,
+    // persistent hidden input on the web). No per-slot <input> so nothing to break on re-render.
     const ph=document.createElement("div"); ph.className="placeholder"; ph.textContent="Tap or drop photo"; slot.appendChild(ph);
-    const file=document.createElement("input"); file.type="file"; file.accept="image/*";
-    file.onchange=(e)=>loadImg(e.target.files[0],putImg);
-    slot.appendChild(file);
+    slot.style.cursor="pointer";
+    slot.addEventListener("click",(e)=>{ if(e.target.closest(".img-ctrls")) return; openFilePicker((f)=>loadImg(f,putImg)); });
   }
   slot.addEventListener("dragover",e=>{e.preventDefault(); slot.classList.add("drag");});
   slot.addEventListener("dragleave",()=>slot.classList.remove("drag"));
@@ -1330,13 +1371,17 @@ function backSlot(){
   wrap.addEventListener("mousedown",(e)=>{ if(e.target===wrap) selectEl("back-photo"); });
   wrap.addEventListener("touchstart",(e)=>{ if(e.target===wrap) selectEl("back-photo"); },{passive:true});
   // tap anywhere on the empty back cover (except the name/QR/handles) to add a photo when none is set
-  wrap.addEventListener("click",(e)=>{ if(!state.back.bg && !e.target.closest(".dwrap") && !e.target.closest(".img-ctrls")) openFilePicker((f)=>loadImg(f,(entry)=>{ state.back.bg=entry; save(); renderEditor(); toast("Back photo added"); })); });
+  wrap.addEventListener("click",(e)=>{ if(!state.back.bg && !e.target.closest(".dwrap") && !e.target.closest(".img-ctrls")) openFilePicker((f)=>loadImg(f,(entry)=>{ state.back.bg=entry; save(); renderEditor(); })); });
   setTimeout(()=>QR.render(qc,state.back.url||""),0);
   return wrap;
 }
 
 /* ---------------- imposition ---------------- */
-const LAYOUT_8=[{page:5,rot:180},{page:6,rot:180},{page:7,rot:180},{page:0,rot:180},{page:4,rot:0},{page:3,rot:0},{page:2,rot:0},{page:1,rot:0}];
+/* Classic one-sheet 8-page mini-zine (fold-and-cut), matching Dirty Little Zine's sheet.
+   Reading the printed sheet L->R:
+     TOP row    (upside-down, rot 180): pages 7,6,5,4  -> indices 6,5,4,3
+     BOTTOM row (upright, rot 0):       pages 8,1,2,3  -> indices 7,0,1,2 */
+const LAYOUT_8=[{page:6,rot:180},{page:5,rot:180},{page:4,rot:180},{page:3,rot:180},{page:7,rot:0},{page:0,rot:0},{page:1,rot:0},{page:2,rot:0}];
 /* built-in 16-page single-sheet "I-cut" zine (works on any paper; A3 gives the largest pages).
    4 cols x 4 rows, printed one side. Rows alternate rotation (top two bands flipped). Page indices are (pageNumber - 1).
    Derived from the standard I-cut template:
@@ -2118,16 +2163,19 @@ document.addEventListener("keydown",(e)=>{
 /* ---- theme toggle: Honey Bunny <-> Victoria Studio (HK). Purely cosmetic; stored
    separately from zine state so a "Start over" never resets it. ---- */
 (function(){
-  const KEY="zine-theme";
+  // Key bumped to v2 so this release starts EVERYONE on the new HK default, ignoring any
+  // theme choice saved under the old key; once the user toggles, the v2 key remembers it.
+  const KEY="zine-theme2";
   const tmeta=document.querySelector('meta[name="theme-color"]');
   const title=document.getElementById("brandTitle");
   function applyTheme(t){
     const hk=(t==="hk");
     document.body.setAttribute("data-theme", hk?"hk":"hb");
-    if(title) title.innerHTML = hk ? 'Victoria <span class="rip">Studio</span>' : 'The Honey <span class="rip">Bunny</span>';
+    if(title) title.innerHTML = hk ? 'Harbour &amp; <span class="rip">Bay</span>' : 'The Honey <span class="rip">Bunny</span>';
     if(tmeta) tmeta.setAttribute("content", hk?"#123328":"#1a1614");
   }
-  let cur="hb"; try{ if(localStorage.getItem(KEY)==="hk") cur="hk"; }catch(e){}
+  // Default theme is HK (Harbour & Bay); respect an explicit saved "hb" choice.
+  let cur="hk"; try{ if(localStorage.getItem(KEY)==="hb") cur="hb"; }catch(e){}
   applyTheme(cur);
   const tog=document.getElementById("themeToggle");
   if(tog) tog.addEventListener("click",()=>{
@@ -2293,7 +2341,7 @@ const REBUILD_PROMPT=[
 "Build a single-file, offline, browser-based photo-zine maker called \"The Honey Bunny\" (inspired by Dirty Little Zine). One index.html: all HTML, CSS, and JavaScript inline, no external libraries, no build step, no network calls. It must run by double-clicking the file in any modern browser. Auto-save to localStorage under a versioned key.",
 "",
 "AESTHETIC: retro/editorial print zine. Off-white paper #f4efe6 with a faint diagonal texture, dark charcoal ink #1a1614, red accent #e2483d, blue accent #2b5f9e. Courier/monospace UI, Georgia serif for the masthead and cover title, hard offset box-shadows. Header reads \"The Honey Bunny\" (\"Bunny\" in red).",
-"THEME TOGGLE (two skins): support a second cosmetic skin, 'Victoria Studio' (a 1960s Hong Kong theme), selectable via a small pill toggle switch in the masthead actions. IMPLEMENT AS CSS-VARIABLE OVERRIDES ONLY so it can never break function: the default theme sets --ink/--paper/--paper2/--accent/--accent2/--line/--shadow on :root; a body[data-theme=\"hk\"] block re-maps those same variables (jade dark #123328, ceramic green #254d3e as accent2, seal red #c02b26, milk-tea paper #f3eee3, cream panel #fcfaf4) plus a handful of theme-specific rules: a micro-mosaic floor-tile background, a CJK-friendly font stack, a jade masthead with a red/white/green terrazzo trim strip along its bottom edge (::after repeating-linear-gradient), square (not pill) masthead buttons, and jade drawer/inspector. HK-only brand bits live in the masthead but are hidden in the default theme and shown under [data-theme=hk]: a red 'HK 852 香港' seal badge sitting INLINE next to the title on the same baseline (in a .title-row flex next to the h1, NOT centered against the whole two-line block) and a Chinese subtitle '維多利亞出版' under the title; the h1 text swaps to 'Victoria Studio' (Studio in red) via JS. The theme toggle is a compact pill switch placed at the END of the masthead action buttons (after Print/Save PDF), separated by a thin left divider, with a tiny HB/VS label — keep it sleek, not a big control. The toggle stores its choice in a SEPARATE localStorage key ('zine-theme') — NOT in the zine state — so 'Start over' and saved-HTML exports never reset or carry the skin; on boot, read that key and apply data-theme + swap the h1 + update the theme-color meta (#123328 vs #1a1614). Everything else (imposition, print, canvas, exports, editor, drag, viewer) is shared and untouched by the skin.",
+"THEME TOGGLE (two skins): support a second cosmetic skin, 'Victoria Studio' (a 1960s Hong Kong theme), selectable via a small pill toggle switch in the masthead actions. IMPLEMENT AS CSS-VARIABLE OVERRIDES ONLY so it can never break function: the default theme sets --ink/--paper/--paper2/--accent/--accent2/--line/--shadow on :root; a body[data-theme=\"hk\"] block re-maps those same variables (jade dark #123328, ceramic green #254d3e as accent2, seal red #c02b26, milk-tea paper #f3eee3, cream panel #fcfaf4) plus a handful of theme-specific rules: a micro-mosaic floor-tile background, a CJK-friendly font stack, a jade masthead with a red/white/green terrazzo trim strip along its bottom edge (::after repeating-linear-gradient), square (not pill) masthead buttons, and jade drawer/inspector. HK-only brand bits live in the masthead but are hidden in the default theme and shown under [data-theme=hk]: a red 'HK 852 香港' seal badge sitting INLINE next to the title on the same baseline (in a .title-row flex next to the h1, NOT centered against the whole two-line block) and a Chinese subtitle '維多利亞出版' under the title; the h1 text swaps to 'Victoria Studio' (Studio in red) via JS. The theme toggle is a compact pill switch placed at the END of the masthead action buttons (after Print/Save PDF), separated by a thin left divider, with a tiny HB/VS label — keep it sleek, not a big control. The toggle stores its choice in a SEPARATE localStorage key ('zine-theme2') — NOT in the zine state — so 'Start over' and saved-HTML exports never reset or carry the skin. DEFAULT THEME IS HK (Harbour & Bay): boot defaults cur='hk' unless an explicit saved 'hb' exists under that key. NOTE the key was bumped from 'zine-theme' to 'zine-theme2' so this release starts EVERYONE on the HK default even if they'd previously toggled (old saved choices under the old key are ignored); after they toggle, the v2 key remembers it. The HK masthead shows title 'Harbour & Bay' (Bay in red) with a small muted '香港852' tag tucked under the title (absolutely positioned so it doesn't grow the header; the title-block reserves its height so title+tag stay vertically centred against the buttons). Toggling to HB swaps h1 to 'The Honey Bunny' and theme-color to #1a1614. Everything else (imposition, print, canvas, exports, editor, drag, viewer) is shared and untouched by the skin.",
 "",
 "TOP TOOLBAR: superseded by LAYOUT / CHROME above — do not add a wide top toolbar; use the hamburger drawer for Format/Paper/Default-layout/templates/alignment/export and keep only Download + Print in the masthead.",
 "",
@@ -2309,7 +2357,7 @@ const REBUILD_PROMPT=[
 "DRAGGABLE COVER ELEMENTS (title text, name text, QR box): each is wrapped in a positioned .dwrap with a ✥ drag handle. Provide TWO drag methods: (a) the handle drags immediately; (b) dragging the element BODY also moves it, but only after the pointer passes a small ~6px threshold, so a plain click/tap still selects and (for text fields) focuses for editing. Both methods share the same move/snap/guide/save logic and support mouse + touch. Position is stored as {x,y%} + scale s; clamp x,y to 4-96%.",
 "MOBILE / TOUCH SUPPORT: the app must be fully usable on phones/tablets in a mobile browser. (1) Pan/zoom: implement touch events alongside mouse — one-finger drag pans a photo/cover background; TWO-FINGER PINCH zooms it (track the two touch points' distance ratio against the scale at gesture start, clamp scale 1-4, re-clamp pan). Give pannable surfaces touch-action:none so the browser doesn't hijack the gesture for page scroll/zoom. (2) Selection on touch: because the pan handler calls preventDefault (which suppresses the synthetic mousedown), add explicit touchstart listeners to select cover/back photos and their wraps, and onfocus selection for the title/name text fields. (3) Text-box/QR drag handles must listen for touchstart/touchmove/touchend (they already do for mouse). (4) Interior photos keep on-screen +/- /reset buttons for zoom without a wheel. (5) Responsive @media (max-width:640px): single-column spread, full-width masthead action buttons, cap the bottom inspector at ~52vh with overflow-y:auto so it doesn't cover the screen, add extra bottom padding to .wrap, larger nudge-pad tap targets. Do NOT force a fixed .canvas height on mobile — keep the printed-panel aspect-ratio so the preview stays true. (6) When the hamburger DRAWER is open, HIDE the fixed bottom inspector (toggle a body.drawer-open class in openDrawer/closeDrawer and hide .inspector under it) and give the drawer generous bottom padding (incl. env(safe-area-inset-bottom)) — otherwise the fixed inspector (z-index above the drawer) sits over the drawer's lower content and hides the 'Start over' button on phones (bug to avoid).",
 "",
-"FRONT COVER: editable title + optional background photo (same pan/zoom, clamped). BACK COVER: editable name/handle + a QR code + optional background photo. The QR encodes a URL entered in the bottom panel but the URL text is NOT printed. Default positions spaced apart (name high, QR lower). Generate QR codes in PURE VANILLA JS (byte mode, error-correction M, auto version) — no external QR library. To ADD a cover photo, tap the empty cover ANYWHERE except the title/name/QR boxes or the on-image controls. CRITICAL for the packaged desktop app: use ONE app-level PERSISTENT hidden file input (created once, appended to body, never removed) with a stored callback set at click time — do NOT create a fresh <input> per cover instance. On covers, selecting/tapping re-renders the cover wrap, which would DESTROY a per-instance input (and its change handler) before the async 'change' fires, so the chosen photo silently never landed in the app (picker opened, photo didn't appear — interiors were unaffected because they don't re-render between click and change). The persistent input survives re-renders; its change reads files[0], calls the stored callback, then resets value so the same file can be re-picked. ALSO show a small always-reliable '＋ Photo' chip (top-left) on any EMPTY cover/back — the back cover's QR + name boxes cover most of the wrap, leaving almost no bare 'empty space' to tap, so the chip guarantees a hit target that opens the picker regardless. CRITICAL: open every file picker through a shared helper that APPENDS the <input type=file> to the DOM before calling .click() (then removes it) — a detached input's .click() is ignored by the desktop/Tauri WebView, which is why the empty-cover tap opened nothing in the Mac app while the button worked.",
+"FRONT COVER: editable title + optional background photo (same pan/zoom, clamped). BACK COVER: editable name/handle + a QR code + optional background photo. The QR encodes a URL entered in the bottom panel but the URL text is NOT printed. Default positions spaced apart (name high, QR lower). Generate QR codes in PURE VANILLA JS (byte mode, error-correction M, auto version) — no external QR library. To ADD a cover photo, tap the empty cover ANYWHERE except the title/name/QR boxes or the on-image controls. CRITICAL for the packaged desktop app: use ONE app-level PERSISTENT hidden file input (created once, appended to body, never removed) with a stored callback set at click time — do NOT create a fresh <input> per cover instance. On covers, selecting/tapping re-renders the cover wrap, which would DESTROY a per-instance input (and its change handler) before the async 'change' fires, so the chosen photo silently never landed in the app (picker opened, photo didn't appear — interiors were unaffected because they don't re-render between click and change). The persistent input survives re-renders; its change reads files[0], calls the stored callback, then resets value so the same file can be re-picked. Every add/replace path (interior slot tap, interior Replace, cover/back empty-tap, cover/back Replace, inspector Add/Replace) goes through this one openFilePicker so behaviour is identical everywhere. CRITICAL: open every file picker through a shared helper that APPENDS the <input type=file> to the DOM before calling .click() (then removes it) — a detached input's .click() is ignored by the desktop/Tauri WebView, which is why the empty-cover tap opened nothing in the Mac app while the button worked.",
 "",
 "SELECTION + FIXED BOTTOM INSPECTOR PANEL (Dirty-Little-Zine style): click any cover element (title, name, QR, or a photo) to select it; a fixed panel at the bottom shows controls: Text -> Font (6 system fonts only: Serif/Sans/Mono/Slab/Condensed/Script; no web fonts), Text colour (Black/White), Alignment (Left/Centre/Right), Size (A-/A+ buttons + slider). QR -> link field + size. Photo -> Add / Replace / Reset position / Remove. Cover/back photos ALSO get the same on-image hover controls as interior photos (zoom +/-, reset, Fill/Fit toggle, replace, delete), overlaid on the photo. Each cover has a small \"+ photo\" chip (top-left, on hover, WHITE background not cream) to reliably add/select a cover photo even when name/QR cover the panel. Move elements by dragging a move handle; elements are positioned as {x,y,s} percentages, centered via translate(-50%,-50%) scale(s). Add snapping to 10/25/33/50/66/75/90% with a thin guide line. Text boxes auto-fit width to content (no clipping, no forced wrap of single words), and cover text sizes use the SAME panel-height ratios as print (title ~4% panel height, name ~3%, QR ~17.6%) so the editor is WYSIWYG.",
 "",
@@ -2320,7 +2368,7 @@ const REBUILD_PROMPT=[
 "PAPER SIZES: support US Letter, A4, AND A3. Centralize dimensions in a paperInfo() helper returning {wmm,hmm, wpx,hpx (at 300 DPI), page (@page keyword incl. orientation), ptW,ptH (PDF points)} per size, defaulting to LANDSCAPE and swapping to PORTRAIT for portraitPages templates. Base sizes: Letter 279.4x215.9mm / 3300x2550px / 792x612pt; A4 297x210mm / ~3507x2481px / 842x595pt; A3 420x297mm / ~4961x3508px / 1191x842pt. Every sizing path (editor preview panel aspect ratio, print sheet math, 300 DPI canvas, @page, PDF points) must read from paperInfo() — no scattered ternaries.",
 "BUILT-IN 16-PAGE I-CUT TEMPLATE: ship a built-in (non-deletable) template 'icut16' = '16-page zine (I-cut)' in a BUILTIN_TEMPLATES array that activeTemplate() and the Format dropdown include (before saved templates). It works on ANY paper size (Letter/A4/A3 — A3 just yields the largest pages); do NOT force a paper size when selected. It sets portraitPages:true (see PORTRAIT-SHEET TEMPLATES) so it prints on a PORTRAIT sheet and photos fill each cell. Single sheet, 4 cols x 4 rows, printed ONE side, folded into a booklet via an 'I'-shaped cut through the centre (vertical slit down the middle two rows + horizontal slit across the middle two columns). Rows alternate rotation: rows 0 & 2 are 180deg, rows 1 & 3 are 0deg (the 180deg rotation must rotate the PHOTO too, not just text — wrap the whole panel content). Page imposition by (row,col), page numbers: row0 8,7,6,5 / row1 9,10,3,4 / row2 12,11,2,15 / row3 13,14,16,1(front cover). Store as page indices (pageNumber-1). Crop marks adapt: for icut16 draw a bold dashed 'I' cut guide; for 2-row layouts the classic centre fold line; always edge-to-edge corner trim guides + centre crosshair. Apply identically in print CSS and the 300 DPI canvas, driven by paperInfo().",
 "",
-"IMPOSITION + PRINT: on Print, lay panels onto physical sheet(s) as a CSS grid, top-row panels rotated 180deg so a single-sheet fold produces a correct booklet. Classic 8-page uses the standard mini-zine 4x2 mapping. Cover title, back name, QR, background photos, fonts, colours, alignment, positions and scales all carry through. Print text/QR sizes MUST match the editor — size them in real mm derived from usable panel height (paper height / rows) * the same ratios (title 4%, name 3%, QR 17.6%), with line-height:1.05 and no boxy shadow. TEXT SAFE MARGIN + WRAP PARITY (so cover text never crowds the trim edge and the editor matches the output): clamp a text box centre to 8%..92% of the panel when dragging; cap text max-width to ~84% of panel width in the editor (cqw), in print (.ptext max-width:84%), AND in the 300 DPI canvas (word-wrap drawText to panelW*0.84, honouring explicit newlines then word-wrapping); use line-height 1.05 in all three (the canvas must NOT use a different value like 1.12, or wrapped titles drift vertically vs the editor).",
+"IMPOSITION + PRINT: on Print, lay panels onto physical sheet(s) as a CSS grid, top-row panels rotated 180deg so a single-sheet fold produces a correct booklet. Classic 8-page uses the fold-and-cut mini-zine map that MATCHES DIRTY LITTLE ZINE's sheet, a 4x2 grid read left-to-right: TOP row is upside-down (rot 180) pages 7,6,5,4 and BOTTOM row is upright (rot 0) pages 8,1,2,3 — i.e. page indices top=[6,5,4,3], bottom=[7,0,1,2]. Cover title, back name, QR, background photos, fonts, colours, alignment, positions and scales all carry through. Print text/QR sizes MUST match the editor — size them in real mm derived from usable panel height (paper height / rows) * the same ratios (title 4%, name 3%, QR 17.6%), with line-height:1.05 and no boxy shadow. TEXT SAFE MARGIN + WRAP PARITY (so cover text never crowds the trim edge and the editor matches the output): clamp a text box centre to 8%..92% of the panel when dragging; cap text max-width to ~84% of panel width in the editor (cqw), in print (.ptext max-width:84%), AND in the 300 DPI canvas (word-wrap drawText to panelW*0.84, honouring explicit newlines then word-wrapping); use line-height 1.05 in all three (the canvas must NOT use a different value like 1.12, or wrapped titles drift vertically vs the editor).",
 "OUTPUT = CANVAS ONLY (no browser print): the app does NOT use window.print()/@media print (it caused unreliable cross-browser @page + scaling). Everything renders from the 300 DPI canvas. SAFE INSET = 9mm on every edge, applied in the canvas (9*mmToPx) and matched by the editor panel-AR math (paper minus 18mm per dimension) and crop-mark positions. The 9mm (not 4mm) inset is deliberate: home printers have a ~3-5mm unprintable border, so marks nearer the edge get clipped; at 9mm crop marks sit inside the printable area so EVERY template (classic 8-page, built-in I-cut, and any custom/future saved template — they all route through renderSheetCanvas + paperInfo()) prints correctly at 100% scale. Tell users to print the PDF at Scale:100% (not Fit).",
 "PREVIEW-BEFORE-SAVE: 'Print/Save PDF' does NOT save immediately — it renders the sheets to canvas, caches them, and shows a PREVIEW overlay (the exact sheet images) with a PROMINENT 100%-scale warning (a pill/callout in the accent red: '⚠ Print at 100% scale — do NOT use Fit to page') and three sleek pill buttons: 'Save PDF' (red primary), 'Download PNG (300 DPI)' (this is the ONLY place the image download lives — it is NOT in the masthead; a SINGLE-sheet zine saves as a bare .png, while a multi-sheet zine bundles the sheet PNGs into a .zip), and 'Close' (the overlay also closes on backdrop click and on the Escape key). Include a small note in the overlay: 'Both the PDF and PNG save at 300 DPI full paper size — print-quality ready.' This is TRUE: both exports come from the same renderSheetCanvas canvases sized to paperInfo().wpx x hpx at DPI=300 (Letter 3300x2550 etc.); the PNG is lossless and the PDF embeds those same-size canvases as JPEG quality ~0.95 fitted to the exact paper points, so both are genuinely print-ready. Save/PNG reuse the cached canvases (no re-render) and build the file on that button's click (a fresh user gesture, so showSaveFilePicker works on Safari/iOS; fall back to a manual-save overlay otherwise). CRITICAL: when the manual-save fallback overlay appears (Safari/iOS, where the async download is silently dropped), it must CLOSE the preview overlay first and stack ABOVE it (give the download overlay a higher z-index) — otherwise the save button renders BEHIND the preview and the user can't tap it (bug to avoid). This is safe — it's on-screen images + a self-built PDF, never the browser print engine, so it can't reintroduce print-formatting bugs.",
 "FLIP-THROUGH VIEWER ('Digital zine preview'): a masthead button labelled 'Digital zine preview' renders each READING page (cover, 1..N, back) UPRIGHT as its own image via renderPanelToCanvas at the page cell aspect (NOT the imposition sheet, no 180deg rotation), then shows a self-contained viewer document. CRITICAL — display it in an IN-PAGE full-screen overlay via an IFRAME (set iframe.srcdoc = viewer HTML, .open the overlay, lock body scroll). Do NOT open a new tab (window.open + document.write): on the deployed web build/installed PWA the popup gets blocked or renders blank/partial, and a standalone PWA tab has no browser chrome, so the user is stranded with no back button (the bug to avoid). The overlay has a fixed 'Back' button (top-left, above the iframe, honouring env safe-area insets) that clears srcdoc + closes; Escape also closes. Because the viewer runs inside the iframe, its own keydown handler catches Escape and posts a 'zv-close' message to window.parent, which the parent listens for and closes the overlay (an iframe's keydown does NOT bubble to the parent document, so a parent-only Escape listener would miss it — the bug to avoid). The viewer presents a book: the front cover alone, INTERIOR pages as TWO FACING PAGES side-by-side (spreads: cover-alone [null,0], then interior pairs [p,p+1], then back-alone [N-1,null]), and the back cover alone. A thin centre seam line sits between the two facing pages, but it MUST be hidden whenever the current spread has only one page (cover/back or an unpaired page) — otherwise it draws a stray vertical line down the middle of that single image (bug to avoid); toggle the seam's display based on whether both leaves are filled. Books are centred in a full-height viewport (top:50%+left:50% + transform:translate(-50%,-50%)). SIZE-TO-FIT: the book height is computed in JS from the single reading-page aspect ratio (passed in from the renderer as W/H) so the CURRENT spread fits within BOTH the viewport width AND height — bookHeight = min(availH, availW / (pagesWide * aspect)) where pagesWide is 2 for a facing spread and 1 for a lone cover/back. This is essential on phones: a two-page spread in PORTRAIT is width-limited (so it shrinks to fit the narrow screen instead of overflowing), and in LANDSCAPE it grows to use the height. The book lives in a viewport that stops ABOVE the fixed bottom control bar (viewport bottom:~64px) so the bar never overlaps the pages — measure availH from the viewport rect, not the full window (in landscape the short height + bottom bar otherwise let the bar sit on top of the artwork — the bug to avoid). Re-fit on window resize AND orientationchange, animating the height change (~.3s) so rotating portrait<->landscape rescales smoothly for both single and double pages. TRANSITION = a sleek CROSS-FADE with a small directional drift + scale (NOT a 3D flip and NOT a horizontal slide). To turn: clone the book, fill it with the destination spread, append it as an 'entering' layer starting at opacity 0 / translateX(-50% +/-26px) / scale .97; the current book is a 'leaving' layer that animates to opacity 0 / opposite drift / scale 1.03; the incoming animates to opacity 1 / translateX(-50%) / scale 1 over ~460ms. Commit state on the incoming layer's opacity transitionend (with a setTimeout backstop) then remove the clone. Do NOT use a rotateY page-flip or a full slide — the 3D flip flashed the destination page and the single-page flip glitched on the cover(1)->spread(2) width change and mirrored back face; the cross-fade has NO width math and NO mirrored faces, so the 1<->2 page change is glitch-free. Navigation supports BOTH click and drag in one pointerup handler: on release, if the horizontal movement exceeds ~40px it is a DRAG (drag left=next, drag right=back); otherwise it is a CLICK (click on the right half of the window=next, left half=back). Also Left/Right arrow keys, Space, Home/End, and Prev/Next pill buttons. Prevent native image dragging (draggable=false, -webkit-user-drag:none, pointer-events:none on imgs, preventDefault on dragstart/pointerdown) so a press-drag turns the page instead of ghost-dragging the image (that native drag showed a stray text/image overlay — the bug to avoid). It embeds the page images as data-URLs so it works offline/standalone.",
@@ -2380,15 +2428,10 @@ document.addEventListener("mousedown", maybeDeselect);
 document.addEventListener("touchstart", maybeDeselect, {passive:true});
 
 /* ---------------- boot ---------------- */
-(function boot(){
-  // a saved-zine HTML file embeds its state here; prefer it over localStorage on first load
-  let embedded=null;
-  try{ if(window.__EMBEDDED_ZINE__){ embedded=window.__EMBEDDED_ZINE__; } }catch(e){}
-  try{ hydrate(embedded||load()); }catch(e){ console.error("load failed",e); try{localStorage.removeItem("zinepress2");}catch(_){} state.cover=freshCover(); state.back=freshBack(); state.savedTemplates=[]; state.format="8"; }
-  if(embedded){ save(); }   // persist the embedded zine into this browser
+function safeRenderAll(){
   rebuildFormatDropdown();
-  document.getElementById("paper").value=state.paper;
-  document.getElementById("cropMarks").value=state.cropMarks?"on":"off";
+  var pv=document.getElementById("paper"); if(pv) pv.value=state.paper;
+  var cm=document.getElementById("cropMarks"); if(cm) cm.value=state.cropMarks?"on":"off";
   applyEditZoom();
   updateNudgeReadout();
   ensurePages();
@@ -2396,7 +2439,48 @@ document.addEventListener("touchstart", maybeDeselect, {passive:true});
   renderTplGrid();
   validateTpl();
   renderInspector();
-  historyInit();
+}
+(function boot(){
+  // a saved-zine HTML file embeds its state here; prefer it over localStorage on first load
+  let embedded=null;
+  try{ if(window.__EMBEDDED_ZINE__){ embedded=window.__EMBEDDED_ZINE__; } }catch(e){}
+  try{ hydrate(embedded||load()); }catch(e){ console.error("load failed",e); try{localStorage.removeItem("zinepress2");}catch(_){} state.cover=freshCover(); state.back=freshBack(); state.savedTemplates=[]; state.format="8"; }
+  if(embedded){ try{ save(); }catch(_){} }   // persist the embedded zine into this browser
+  try{
+    safeRenderAll();
+  }catch(e){
+    // Never leave a blank editor: reset to a clean 8-page zine and render again. Any single
+    // startup error (bad saved state, a missing element, an app WebView quirk) must not blank the app.
+    console.error("boot render failed, resetting to clean state",e);
+    try{ localStorage.removeItem("zinepress2"); }catch(_){}
+    try{ state.format="8"; state.paper=state.paper||"letter"; state.cover=freshCover(); state.back=freshBack(); state.pages=[]; state.savedTemplates=state.savedTemplates||[]; currentSpread=0; selection=null; safeRenderAll(); }
+    catch(e2){ console.error("clean render also failed",e2); }
+  }
+  try{ historyInit(); }catch(_){}
+})();
+/* last-resort safety net: if any uncaught error slips through and the pages never rendered,
+   force a clean editor so the app is never a blank window. */
+window.addEventListener("error",function(){
+  try{ var host=document.getElementById("pages"); if(host && !host.children.length){ state.format="8"; state.cover=freshCover(); state.back=freshBack(); state.pages=[]; currentSpread=0; ensurePages(); renderEditor(); } }catch(_){}
+});
+
+/* ---------------- startup splash dismiss ----------------
+   Fade the jade/crest splash out ~2s after the window loads, then remove it.
+   Runs independently of render so a render hiccup can never leave it stuck;
+   a hard fallback also forces it away in case 'load' never fires. */
+(function splash(){
+  var el=document.getElementById("splash");
+  if(!el) return;
+  var dismissed=false;
+  function go(){
+    if(dismissed) return; dismissed=true;
+    el.classList.add("hide");
+    setTimeout(function(){ el.classList.add("gone"); },600);
+  }
+  // ~1.5s after full load
+  window.addEventListener("load",function(){ setTimeout(go,1500); });
+  // hard fallback: never let the splash linger past 3.5s regardless of load timing
+  setTimeout(go,3500);
 })();
 
 /* ---------------- PWA: offline service worker + install prompt ---------------- */
