@@ -2509,8 +2509,8 @@ window.addEventListener("error",function(){
 
 /* ---------------- Ko-fi "Give" button ----------------
    One code path (a <button>, so there's no default navigation to double-fire).
-   Web: window.open. Tauri Mac app: open the system browser via the opener plugin's
-   invoke command. A temporary on-screen debug reports what the runtime exposes if nothing works. */
+   Web: window.open. Tauri Mac app: open the system browser via the opener plugin's invoke
+   command. A quiet error toast appears only if the open fails (e.g. a permission regression). */
 (function kofi(){
   try{
     var b=document.getElementById("kofiGive");
@@ -2526,17 +2526,6 @@ window.addEventListener("error",function(){
              (window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.invoke)||null;
     }
 
-    function debugDump(){
-      var T=window.__TAURI__||{};
-      var parts=[];
-      parts.push("__TAURI__="+(window.__TAURI__?"yes":"no"));
-      parts.push("__TAURI_INTERNALS__="+(window.__TAURI_INTERNALS__?"yes":"no"));
-      parts.push("core.invoke="+(T.core&&T.core.invoke?"yes":"no"));
-      parts.push("invoke="+(T.invoke?"yes":"no"));
-      parts.push("opener="+(T.opener?"yes":"no"));
-      try{ toast("Give: "+parts.join(" · ")); }catch(e){ alert("Give debug: "+parts.join("\n")); }
-    }
-
     b.addEventListener("click",function(ev){
       ev.preventDefault();
       if(inTauri()){
@@ -2544,12 +2533,10 @@ window.addEventListener("error",function(){
         if(invoke){
           try{
             var r=invoke("plugin:opener|open_url",{url:url});
-            if(r&&typeof r.catch==="function"){ r.catch(function(err){ try{ toast("Give error: "+err); }catch(_){}} ); }
+            if(r&&typeof r.catch==="function"){ r.catch(function(err){ try{ toast("Couldn't open the link: "+err); }catch(_){}} ); }
             return;
-          }catch(e){ /* fall through to debug */ }
+          }catch(e){ try{ toast("Couldn't open the link."); }catch(_){}; return; }
         }
-        // Nothing worked in the desktop app — show what's available so we can fix it.
-        debugDump();
         return;
       }
       // Web
