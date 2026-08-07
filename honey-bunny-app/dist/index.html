@@ -634,9 +634,9 @@
 
 <!-- Ko-fi tip button — floats bottom-right on the WEB app only. Hidden by default; the boot code
      reveals it only when running on http/https (never in the Tauri Mac app, which is file://tauri://). -->
-<a id="kofiGive" class="kofi-give" href="https://ko-fi.com/ht30703" target="_blank" rel="noopener noreferrer" hidden>
+<button type="button" id="kofiGive" class="kofi-give" data-href="https://ko-fi.com/ht30703" hidden>
   <span class="kofi-heart" aria-hidden="true">♥</span><span class="kofi-lbl">Give</span>
-</a>
+</button>
 
 <div id="inspector" class="inspector">
   <div class="insp-inner">
@@ -2508,40 +2508,52 @@ window.addEventListener("error",function(){
 })();
 
 /* ---------------- Ko-fi "Give" button ----------------
-   Shown everywhere — web app and the packaged Mac app — so anyone can tip.
-   Web: window.open / the <a href> opens Ko-fi in a new tab.
-   Tauri Mac app: a plain link is a no-op, so open the system browser via the opener plugin.
-   We try, in order: the opener JS binding, then the raw invoke command
-   (plugin:opener|open_url), then window.open — whichever the runtime provides. */
+   One code path (a <button>, so there's no default navigation to double-fire).
+   Web: window.open. Tauri Mac app: open the system browser via the opener plugin's
+   invoke command. A temporary on-screen debug reports what the runtime exposes if nothing works. */
 (function kofi(){
   try{
     var b=document.getElementById("kofiGive");
     if(!b) return;
     b.hidden=false;
+    var url=b.getAttribute("data-href");
 
     function inTauri(){ try{ return !!(window.__TAURI__ || window.__TAURI_INTERNALS__); }catch(e){ return false; } }
 
-    function openDesktop(url){
+    function getInvoke(){
       var T=window.__TAURI__||{};
-      // 1) opener plugin JS binding, if present
-      try{ if(T.opener && typeof T.opener.openUrl==="function"){ T.opener.openUrl(url); return true; } }catch(e){}
-      // 2) raw invoke of the opener command
-      try{
-        var invoke=(T.core&&T.core.invoke)||T.invoke||(window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.invoke);
-        if(typeof invoke==="function"){ invoke("plugin:opener|open_url",{url:url}); return true; }
-      }catch(e){}
-      // 3) legacy shell open, just in case
-      try{ if(T.shell && typeof T.shell.open==="function"){ T.shell.open(url); return true; } }catch(e){}
-      return false;
+      return (T.core&&T.core.invoke)||T.invoke||
+             (window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.invoke)||null;
+    }
+
+    function debugDump(){
+      var T=window.__TAURI__||{};
+      var parts=[];
+      parts.push("__TAURI__="+(window.__TAURI__?"yes":"no"));
+      parts.push("__TAURI_INTERNALS__="+(window.__TAURI_INTERNALS__?"yes":"no"));
+      parts.push("core.invoke="+(T.core&&T.core.invoke?"yes":"no"));
+      parts.push("invoke="+(T.invoke?"yes":"no"));
+      parts.push("opener="+(T.opener?"yes":"no"));
+      try{ toast("Give: "+parts.join(" · ")); }catch(e){ alert("Give debug: "+parts.join("\n")); }
     }
 
     b.addEventListener("click",function(ev){
-      var url=b.getAttribute("href");
+      ev.preventDefault();
       if(inTauri()){
-        if(openDesktop(url)){ ev.preventDefault(); return; }
+        var invoke=getInvoke();
+        if(invoke){
+          try{
+            var r=invoke("plugin:opener|open_url",{url:url});
+            if(r&&typeof r.catch==="function"){ r.catch(function(err){ try{ toast("Give error: "+err); }catch(_){}} ); }
+            return;
+          }catch(e){ /* fall through to debug */ }
+        }
+        // Nothing worked in the desktop app — show what's available so we can fix it.
+        debugDump();
+        return;
       }
-      // Web fallback: open a new tab; if blocked, the default <a href> navigation takes over.
-      try{ var w=window.open(url,"_blank","noopener"); if(w){ ev.preventDefault(); } }catch(e){}
+      // Web
+      try{ window.open(url,"_blank","noopener"); }catch(e){}
     });
   }catch(e){}
 })();
