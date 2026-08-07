@@ -1,14 +1,16 @@
 name: Build macOS app
 
+# Build a downloadable .dmg whenever you push a version tag (e.g. v1.0.0),
+# or trigger it manually from the Actions tab.
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:
   build-macos:
     runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: honey-bunny-app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,18 +18,23 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
+          # universal binary: Apple Silicon + Intel
           targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache cargo
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Generate app icons from icon.svg
+      - name: Generate app icons from brand-icon.png
         run: |
-          brew install librsvg
-          rsvg-convert -w 1024 -h 1024 dist/icon.svg -o app-icon.png
-          npx --yes @tauri-apps/cli@latest icon app-icon.png
+          # Tauri generates every native icon size/format (incl. .icns) from the jade crest PNG.
+          npx --yes @tauri-apps/cli@latest icon dist/brand-icon.png
 
       - name: Build the macOS app (universal .dmg)
         run: npx --yes @tauri-apps/cli@latest build --target universal-apple-darwin
@@ -37,4 +44,12 @@ jobs:
         with:
           name: the-honey-bunny-macos
           path: |
-            honey-bunny-app/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
+
+      - name: Attach .dmg to the GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+
