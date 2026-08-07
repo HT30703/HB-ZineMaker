@@ -2509,26 +2509,38 @@ window.addEventListener("error",function(){
 
 /* ---------------- Ko-fi "Give" button ----------------
    Shown everywhere — web app and the packaged Mac app — so anyone can tip.
-   On the web, the normal <a target=_blank> / window.open opens Ko-fi in a new tab.
-   In the Tauri Mac app a plain link is a no-op, so we route the click through the
-   opener plugin (window.__TAURI__.opener.openUrl), which opens the system browser. */
+   Web: window.open / the <a href> opens Ko-fi in a new tab.
+   Tauri Mac app: a plain link is a no-op, so open the system browser via the opener plugin.
+   We try, in order: the opener JS binding, then the raw invoke command
+   (plugin:opener|open_url), then window.open — whichever the runtime provides. */
 (function kofi(){
   try{
     var b=document.getElementById("kofiGive");
     if(!b) return;
     b.hidden=false;
+
+    function inTauri(){ try{ return !!(window.__TAURI__ || window.__TAURI_INTERNALS__); }catch(e){ return false; } }
+
+    function openDesktop(url){
+      var T=window.__TAURI__||{};
+      // 1) opener plugin JS binding, if present
+      try{ if(T.opener && typeof T.opener.openUrl==="function"){ T.opener.openUrl(url); return true; } }catch(e){}
+      // 2) raw invoke of the opener command
+      try{
+        var invoke=(T.core&&T.core.invoke)||T.invoke||(window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.invoke);
+        if(typeof invoke==="function"){ invoke("plugin:opener|open_url",{url:url}); return true; }
+      }catch(e){}
+      // 3) legacy shell open, just in case
+      try{ if(T.shell && typeof T.shell.open==="function"){ T.shell.open(url); return true; } }catch(e){}
+      return false;
+    }
+
     b.addEventListener("click",function(ev){
       var url=b.getAttribute("href");
-      // Desktop app: use the Tauri opener plugin.
-      try{
-        var T=window.__TAURI__;
-        if(T && T.opener && typeof T.opener.openUrl==="function"){
-          ev.preventDefault();
-          T.opener.openUrl(url);
-          return;
-        }
-      }catch(e){}
-      // Web: open a new tab; if that's blocked, the default <a href> navigation takes over.
+      if(inTauri()){
+        if(openDesktop(url)){ ev.preventDefault(); return; }
+      }
+      // Web fallback: open a new tab; if blocked, the default <a href> navigation takes over.
       try{ var w=window.open(url,"_blank","noopener"); if(w){ ev.preventDefault(); } }catch(e){}
     });
   }catch(e){}
