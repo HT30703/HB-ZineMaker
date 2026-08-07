@@ -8,6 +8,12 @@ on:
       - "v*"
   workflow_dispatch:
 
+# The Tauri project (package.json, dist/, src-tauri/) lives in honey-bunny-app/,
+# so every shell step runs from there.
+defaults:
+  run:
+    working-directory: honey-bunny-app
+
 jobs:
   build-macos:
     runs-on: macos-latest
@@ -24,32 +30,41 @@ jobs:
       - name: Cache cargo
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "src-tauri -> target"
+          workspaces: "honey-bunny-app/src-tauri -> target"
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Generate app icons from brand-icon.png
         run: |
-          # Tauri generates every native icon size/format (incl. .icns) from the jade crest PNG.
-          npx --yes @tauri-apps/cli@latest icon dist/brand-icon.png
+          # Tauri generates every native icon size/format (incl. .icns) from the jade crest PNG
+          # and writes them into src-tauri/icons/, where tauri.conf.json expects them.
+          if [ ! -f dist/brand-icon.png ]; then
+            echo "ERROR: honey-bunny-app/dist/brand-icon.png is missing — commit it into dist/."
+            ls -la dist || true
+            exit 1
+          fi
+          echo "Source icon size:"
+          sips -g pixelWidth -g pixelHeight dist/brand-icon.png || true
+          npx --yes @tauri-apps/cli@^2 icon dist/brand-icon.png
+          echo "Generated icons:"
+          ls -la src-tauri/icons || true
 
       - name: Build the macOS app (universal .dmg)
-        run: npx --yes @tauri-apps/cli@latest build --target universal-apple-darwin
+        run: npx --yes @tauri-apps/cli@^2 build --target universal-apple-darwin
 
       - name: Upload .dmg artifact
         uses: actions/upload-artifact@v4
         with:
-          name: the-honey-bunny-macos
+          name: harbour-and-bay-macos
           path: |
-            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
-            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
+            honey-bunny-app/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            honey-bunny-app/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
 
       - name: Attach .dmg to the GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
-
+          files: honey-bunny-app/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
