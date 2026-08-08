@@ -1,4 +1,4 @@
-#Harbour & Bay Zine Maker App
+#HarbourBayZineMakerApp
 
 1. Download the `.dmg` above (under **Assets**).
 2. Open the downloaded `.dmg` file.
