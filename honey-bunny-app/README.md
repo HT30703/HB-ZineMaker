@@ -1,4 +1,4 @@
-# The Honey Bunny — desktop & phone install
+# The Harbour & Bay App — desktop & phone install
 
 This folder turns your zine maker into a **downloadable Mac app** (built for you by
 GitHub, no build tools needed on your machine) and explains the **simple iPhone install**.
