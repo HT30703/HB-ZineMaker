@@ -177,10 +177,18 @@
     /* .wrap is centred at 1180px; stretch the header to the full window using viewport width */
     .wrap>header.masthead{ width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); }
   }
-  /* Desktop app: transparent native title bar lets the jade masthead run to the very top (unified,
-     continuous look). The native bar still handles dragging; we just add a little top padding so the
-     macOS traffic-light buttons (top-left) sit clear of the hamburger. Web is unaffected. */
-  body.is-tauri .wrap>header.masthead{ padding-top:34px; }
+  /* Desktop app (Overlay title bar): the jade masthead runs to the very top under the transparent
+     title bar for a clean, unified look. Since Overlay removes the native drag strip, the MASTHEAD
+     itself is the window drag region, and every interactive control inside it is marked no-drag so
+     clicks still work. Top padding keeps the macOS traffic-light buttons clear of the hamburger. */
+  body.is-tauri .wrap>header.masthead{ padding-top:34px; -webkit-app-region:drag; app-region:drag; }
+  body.is-tauri header.masthead .ham,
+  body.is-tauri header.masthead .mast-actions,
+  body.is-tauri header.masthead .mast-actions *,
+  body.is-tauri header.masthead .theme-toggle,
+  body.is-tauri header.masthead .theme-toggle *{
+    -webkit-app-region:no-drag; app-region:no-drag;
+  }
   header.masthead h1{
     margin:0; font-size:clamp(20px,3vw,30px); letter-spacing:-.5px; font-weight:900;
     text-transform:uppercase; font-family:Georgia,"Times New Roman",serif; line-height:1;
