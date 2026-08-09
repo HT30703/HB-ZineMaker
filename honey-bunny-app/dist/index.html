@@ -56,7 +56,7 @@
   body[data-theme="hk"] .ham{border:1px solid rgba(255,255,255,.5);border-radius:2px;}
   body[data-theme="hk"] .drawer{background:var(--cream-panel);border-right-color:var(--jade-dark);}
   body[data-theme="hk"] .drawer-hd,body[data-theme="hk"] .inspector{background:var(--jade-dark);}
-  body[data-theme="hk"] .inspector{border-top-color:var(--accent);}
+  body[data-theme="hk"] .inspector{border-color:var(--accent);}
   /* HK-only brand bits: hidden in the default theme, shown here */
   .brand-frame{display:flex;align-items:center;gap:12px;}
   /* white-outline neon crest mark, left of the brand name — HK theme only */
@@ -119,10 +119,13 @@
   @keyframes splashPop{from{opacity:0;transform:scale(.92);}to{opacity:1;transform:scale(1);}}
   @media (prefers-reduced-motion:reduce){#splashLogo{animation:none;}}
 
-  /* Ko-fi "Give" button — floating bottom-right, shown on web and the Mac app (revealed by boot JS).
-     Sits above the fixed inspector bar so it's never covered. */
+  /* Ko-fi "Give" — a floating, dynamically-positioned, collapsible tip control.
+     The WRAPPER holds the position; it lifts to clear the inspector when something is selected,
+     and can retract into a small bookmark tab pinned to the bottom edge. */
+  .kofi-wrap{position:fixed;right:18px;bottom:18px;z-index:120;transition:bottom .18s ease;}
+  body.inspector-open .kofi-wrap{bottom:132px;}
   .kofi-give{
-    position:fixed;right:18px;bottom:86px;z-index:120;
+    position:relative;
     display:inline-flex;align-items:center;gap:7px;
     padding:10px 16px;border-radius:999px;
     font-family:inherit;font-size:13px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;
@@ -135,12 +138,44 @@
   .kofi-give:active{transform:translateY(2px);box-shadow:1px 1px 0 var(--shadow);}
   .kofi-give .kofi-heart{font-size:14px;line-height:1;}
   body[data-theme="hk"] .kofi-give{border-radius:6px;border-color:var(--ink);}
-  @media (max-width:560px){ .kofi-give{right:12px;bottom:78px;padding:9px 13px;font-size:12px;} }
+  /* × close tab — hidden until you hover the button */
+  .kofi-close{
+    position:absolute;top:-9px;right:-9px;width:20px;height:20px;border-radius:50%;
+    background:var(--ink);color:#fff;border:1.5px solid var(--paper);
+    font-size:13px;line-height:17px;text-align:center;font-weight:bold;
+    opacity:0;transform:scale(.7);transition:opacity .12s,transform .12s;pointer-events:none;
+  }
+  .kofi-wrap:hover .kofi-close{opacity:1;transform:scale(1);pointer-events:auto;}
+  .kofi-close:hover{background:var(--accent);}
+  /* collapsed: hide the full button, show the little bookmark tab */
+  .kofi-tab{
+    display:none;position:absolute;right:0;bottom:0;
+    width:36px;height:26px;border-radius:8px 8px 0 0;
+    background:var(--accent);color:#fff;border:2px solid var(--ink);border-bottom:none;
+    font-size:14px;line-height:1;cursor:pointer;box-shadow:0 -2px 8px var(--shadow);
+  }
+  body[data-theme="hk"] .kofi-tab{border-radius:6px 6px 0 0;}
+  .kofi-wrap.collapsed .kofi-give{display:none;}
+  .kofi-wrap.collapsed .kofi-tab{display:block;}
+  /* when collapsed, the wrapper hugs the very bottom edge (tab peeks up), ignoring the inspector lift */
+  body.inspector-open .kofi-wrap.collapsed{bottom:0;}
+  .kofi-wrap.collapsed{bottom:0;}
+  @media (max-width:560px){ .kofi-wrap{right:12px;bottom:14px;} body.inspector-open .kofi-wrap{bottom:120px;} .kofi-give{padding:9px 13px;font-size:12px;} }
 
   header.masthead{
     border:3px solid var(--ink); background:var(--ink); color:var(--paper);
     padding:14px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;
     box-shadow:8px 8px 0 var(--shadow);
+  }
+  /* EDGE-TO-EDGE masthead: break out of .wrap (which is max-width:1180px + 26/22px padding) so the
+     header spans the full viewport width and sits flush against the very top of the screen. */
+  .wrap>header.masthead{
+    margin:-26px -22px 26px; padding-left:22px; padding-right:22px;
+    box-shadow:0 4px 14px var(--shadow); border-left:none; border-right:none; border-top:none;
+  }
+  @media (min-width:1181px){
+    /* .wrap is centred at 1180px; stretch the header to the full window using viewport width */
+    .wrap>header.masthead{ width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); }
   }
   header.masthead h1{
     margin:0; font-size:clamp(20px,3vw,30px); letter-spacing:-.5px; font-weight:900;
@@ -163,10 +198,51 @@
   /* slide-in drawer */
   .drawer-scrim{position:fixed;inset:0;background:rgba(26,22,20,.45);opacity:0;visibility:hidden;transition:opacity .2s;z-index:60;}
   .drawer-scrim.open{opacity:1;visibility:visible;}
+
+  /* editor-bar Photos button */
+  .photos-btn{font-family:inherit;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;padding:8px 14px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);cursor:pointer;border-radius:999px;display:inline-flex;align-items:center;gap:7px;box-shadow:2px 2px 0 var(--shadow);}
+  .photos-btn:hover{background:var(--paper2);}
+  .photos-btn:active{transform:translateY(1px);}
+  body[data-theme="hk"] .photos-btn{border-radius:6px;}
+  .photos-count{background:var(--accent);color:#fff;border-radius:999px;font-size:10px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 4px;}
+
+  /* photo tray drawer (right side) — must sit ABOVE the fixed inspector (z-index:80) and the
+     Give button (z-index:120), so its lower photos aren't covered. */
+  .tray-scrim{position:fixed;inset:0;background:rgba(26,22,20,.45);opacity:0;visibility:hidden;transition:opacity .2s;z-index:124;}
+  .tray-scrim.open{opacity:1;visibility:visible;}
+  .tray{position:fixed;top:0;right:0;height:100%;width:var(--tray-w,380px);max-width:94vw;background:var(--paper);border-left:3px solid var(--ink);box-shadow:-10px 0 0 var(--shadow);z-index:125;transform:translateX(104%);transition:transform .22s ease;display:flex;flex-direction:column;}
+  /* left-edge drag handle to resize the tray wider/narrower */
+  .tray-resize{position:absolute;top:0;left:-4px;width:12px;height:100%;cursor:ew-resize;z-index:2;touch-action:none;}
+  .tray-resize::before{content:"";position:absolute;top:50%;left:3px;transform:translateY(-50%);width:4px;height:46px;border-radius:3px;background:var(--ink);opacity:.35;}
+  .tray-resize:hover::before{opacity:.7;}
+  body.tray-resizing{cursor:ew-resize;user-select:none;}
+  body.tray-resizing .tray{transition:none;}
+  .tray.open{transform:translateX(0);}
+  .tray-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:var(--ink);color:var(--paper);flex:0 0 auto;}
+  .tray-title{font-size:12px;letter-spacing:3px;text-transform:uppercase;font-weight:bold;}
+  .tray-close{background:transparent;border:none;color:var(--paper);font-size:26px;line-height:1;cursor:pointer;padding:0 4px;}
+  .tray-close:hover{color:var(--accent);}
+  .tray-body{padding:16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;overscroll-behavior:contain;flex:1 1 auto;padding-bottom:calc(24px + env(safe-area-inset-bottom));}
+  .tray-add{font-family:inherit;font-size:13px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;padding:12px;border:2px dashed var(--ink);background:var(--paper2);color:var(--ink);cursor:pointer;border-radius:6px;flex:0 0 auto;}
+  .tray-add:hover{background:var(--paper);}
+  .tray-hint{font-size:11px;line-height:1.5;color:var(--ink);opacity:.6;margin:0;}
+  .tray-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
+  .tray-cell{position:relative;border:2px solid var(--ink);border-radius:6px;overflow:hidden;background:var(--paper2);cursor:grab;box-shadow:2px 2px 0 var(--shadow);}
+  .tray-cell.sel{outline:3px solid var(--accent);outline-offset:1px;}
+  .tray-cell img{display:block;width:100%;height:96px;object-fit:cover;pointer-events:none;-webkit-user-drag:none;}
+  .tray-cell .tray-name{font-size:10px;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--paper);border-top:1px solid var(--line);}
+  .tray-cell .tray-del{position:absolute;top:3px;right:3px;width:20px;height:20px;border:none;border-radius:50%;background:rgba(26,22,20,.72);color:#fff;font-size:14px;line-height:20px;text-align:center;cursor:pointer;padding:0;}
+  .tray-cell .tray-del:hover{background:var(--accent);}
+  .tray-empty{font-size:12px;opacity:.5;text-align:center;padding:24px 0;grid-column:1/-1;}
+  /* a slot lit up as a valid tap-to-place target */
+  .slot.place-target{outline:3px dashed var(--accent);outline-offset:-3px;}
   .drawer{position:fixed;top:0;left:0;height:100%;width:min(480px,92vw);background:var(--paper);border-right:3px solid var(--ink);box-shadow:10px 0 0 var(--shadow);z-index:61;transform:translateX(-104%);transition:transform .22s ease;overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(40px + env(safe-area-inset-bottom));}
   .drawer.open{transform:translateX(0);}
   /* the fixed bottom inspector must not sit on top of the open menu (it hid the Start over button on phones) */
   body.drawer-open .inspector{display:none !important;}
+  /* while the photo tray is open, hide the fixed inspector + Give button so they can't overlap it */
+  body.tray-open .inspector{display:none !important;}
+  body.tray-open .kofi-wrap{display:none !important;}
   .drawer-hd{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:var(--ink);color:var(--paper);}
   .drawer-title{font-size:12px;letter-spacing:3px;text-transform:uppercase;font-weight:bold;display:flex;align-items:center;gap:10px;}
   /* hand-drawn crest (white on transparent) sits fine on the jade/ink drawer header; hidden by
@@ -309,7 +385,12 @@
   .slot img.photo{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center center;cursor:grab;touch-action:none;}
   .slot img.photo.fit{object-fit:contain;cursor:default;}
   .slot.panning img.photo{cursor:grabbing;}
-  .slot .placeholder{font-size:10px;letter-spacing:1px;color:#a89e8c;padding:6px;pointer-events:none;text-transform:uppercase;}
+  .slot .placeholder{font-size:10px;letter-spacing:1px;color:#a89e8c;padding:6px;pointer-events:none;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;}
+  /* two side-by-side options (Tap slot | Drag from tray) split by a thin vertical divider */
+  .placeholder .ph-opt{line-height:1.1;}
+  .placeholder .ph-div{width:1px;height:12px;background:currentColor;opacity:.45;}
+  /* centered "tap or drop photo" prompt on an empty cover/back (taps pass through to the wrap) */
+  .coverwrap .cover-ph{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:0;}
   .slot input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
   .img-ctrls{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:flex;gap:3px;z-index:4;opacity:0;transition:opacity .12s;}
   .slot.has-img:hover .img-ctrls{opacity:1;}
@@ -332,6 +413,7 @@
   .dwrap.qr{touch-action:none;}
   .dwrap.selected{outline:2px solid var(--accent);outline-offset:1px;}
   .coverwrap.bg-selected{outline:2px solid var(--accent2);outline-offset:-2px;}
+  .slot.bg-selected{outline:2px solid var(--accent2);outline-offset:-2px;}
   .snap-guide{position:absolute;z-index:7;background:var(--accent2);display:none;pointer-events:none;}
   .snap-gx{top:0;bottom:0;width:1px;transform:translateX(-0.5px);}
   .snap-gy{left:0;right:0;height:1px;transform:translateY(-0.5px);}
@@ -349,9 +431,11 @@
   .toast.show{opacity:1;}
   footer.foot{margin-top:30px;font-size:11px;letter-spacing:1px;opacity:.6;text-transform:uppercase;}
 
-  /* bottom inspector */
-  .inspector{position:fixed;left:0;right:0;bottom:0;z-index:80;background:var(--ink);color:var(--paper);border-top:3px solid var(--accent);box-shadow:0 -6px 20px rgba(26,22,20,.25);padding:12px 18px 16px;}
-  .insp-inner{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+  /* floating, dismissible inspector: a rounded panel that appears only when something is selected,
+     sliding up from the bottom. Same context-sensitive controls; just no permanent chrome. */
+  .inspector{position:fixed;left:50%;bottom:16px;width:min(1120px,calc(100vw - 36px));z-index:80;background:var(--ink);color:var(--paper);border:2px solid var(--accent);border-radius:14px;box-shadow:0 10px 30px rgba(26,22,20,.32);padding:12px 18px 14px;transform:translateX(-50%) translateY(24px);opacity:0;visibility:hidden;transition:opacity .18s ease,transform .18s ease,visibility .18s;}
+  .inspector.show{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0);}
+  .insp-inner{margin:0 auto;display:flex;flex-direction:column;gap:8px;}
   .insp-what{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:bold;}
   .insp-dot{width:9px;height:9px;border-radius:50%;background:#5a534d;}
   .insp-what.active .insp-dot{background:var(--accent);}
@@ -405,8 +489,8 @@
     .mast-actions button{flex:1;text-align:center;}
     .theme-toggle{flex:0 0 auto;margin-left:0;padding-left:0;border-left:none;}
     .nav-help-body{width:280px;}
-    /* keep the bottom inspector from swallowing the screen on small phones */
-    .inspector{max-height:52vh;overflow-y:auto;padding:10px 14px 14px;}
+    /* keep the floating inspector from swallowing the screen on small phones */
+    .inspector{max-height:52vh;overflow-y:auto;padding:10px 14px 12px;width:calc(100vw - 20px);bottom:10px;border-radius:12px;}
     .insp-controls{gap:10px;}
     /* bigger tap targets on the alignment nudge pad */
     .nudge-btn{min-width:32px;min-height:32px;}
@@ -600,11 +684,27 @@
     </div>
   </aside>
 
+  <!-- Photo tray: right-side drawer holding session photos to drag / tap onto page slots -->
+  <div class="tray-scrim" id="trayScrim"></div>
+  <aside class="tray" id="tray" aria-hidden="true">
+    <div class="tray-resize" id="trayResize" title="Drag to resize" aria-label="Resize photo tray"></div>
+    <div class="tray-hd">
+      <span class="tray-title">Photo Tray</span>
+      <button type="button" class="tray-close" id="trayClose" aria-label="Close photo tray">&times;</button>
+    </div>
+    <div class="tray-body">
+      <button type="button" class="tray-add" id="trayAddBtn">＋ Add photos to tray</button>
+      <p class="tray-hint" id="trayHint">A holding area you can reuse. Drag a photo onto a page — or tap a photo, then tap a slot. Photos stay here until you reload.</p>
+      <div class="tray-grid" id="trayGrid"></div>
+    </div>
+  </aside>
+
   <div class="editor-bar">
     <div class="undo-group">
       <button type="button" class="zoom-step undo-btn" id="undoBtn" title="Undo (⌘Z)" disabled>&#8630;</button>
       <button type="button" class="zoom-step undo-btn" id="redoBtn" title="Redo (⌘⇧Z)" disabled>&#8631;</button>
     </div>
+    <button type="button" class="photos-btn" id="photosBtn" title="Open the photo tray — a reusable holding area for your images">&#128247; Photo Tray <span class="photos-count" id="photosCount" hidden>0</span></button>
     <label class="zoom-ctl">
       <span class="zoom-lbl">Editor size</span>
       <button type="button" class="zoom-step" id="zoomMinus" title="Smaller">&minus;</button>
@@ -632,11 +732,16 @@
   <footer class="foot">Runs entirely in your browser &middot; nothing is uploaded anywhere.</footer>
 </div>
 
-<!-- Ko-fi tip button — floats bottom-right on the WEB app only. Hidden by default; the boot code
-     reveals it only when running on http/https (never in the Tauri Mac app, which is file://tauri://). -->
-<button type="button" id="kofiGive" class="kofi-give" data-href="https://ko-fi.com/ht30703" hidden>
-  <span class="kofi-heart" aria-hidden="true">♥</span><span class="kofi-lbl">Give</span>
-</button>
+<!-- Ko-fi tip button — floating, dynamically repositioned, and collapsible into a bottom bookmark.
+     Revealed by boot JS. -->
+<div id="kofiWrap" class="kofi-wrap" hidden>
+  <button type="button" id="kofiGive" class="kofi-give" data-href="https://ko-fi.com/ht30703">
+    <span class="kofi-heart" aria-hidden="true">♥</span><span class="kofi-lbl">Give</span>
+    <span class="kofi-close" id="kofiClose" title="Hide" aria-label="Hide the Give button">×</span>
+  </button>
+  <button type="button" id="kofiTab" class="kofi-tab" title="Show the Give button" aria-label="Show the Give button">♥</button>
+</div>
+
 
 <div id="inspector" class="inspector">
   <div class="insp-inner">
@@ -694,8 +799,8 @@ const FONTS = [
 ];
 const PAGE_COUNTS = {"8":8};   // built-in formats; custom templates use pageCount()
 
-function freshCover(){ return {title:"", bg:null, font:FONTS[0].css, color:"#1a1614", align:"center", pos:{title:{x:50,y:45,s:1}}}; }
-function freshBack(){ return {name:"", url:"", bg:null, font:FONTS[0].css, color:"#1a1614", align:"center", pos:{name:{x:50,y:20,s:1}, qr:{x:50,y:62,s:1}}}; }
+function freshCover(){ return {title:"", showTitle:false, bg:null, font:FONTS[0].css, color:"#1a1614", align:"center", pos:{title:{x:50,y:45,s:1}}}; }
+function freshBack(){ return {name:"", url:"", showName:false, showQR:false, bg:null, font:FONTS[0].css, color:"#1a1614", align:"center", pos:{name:{x:50,y:20,s:1}, qr:{x:50,y:62,s:1}}}; }
 
 let state = {
   format:"8", paper:"letter", pages:[],
@@ -803,6 +908,8 @@ function hydrate(loaded){
   // cover
   const c = loaded.cover||{};
   state.cover.title = typeof c.title==="string"?c.title:"";
+  // visibility: honour an explicit saved flag; otherwise show the title if the save already had text
+  state.cover.showTitle = (typeof c.showTitle==="boolean") ? c.showTitle : !!(state.cover.title && state.cover.title.trim());
   state.cover.bg = normImg(c.bg);
   state.cover.font = c.font||FONTS[0].css;
   state.cover.color = c.color||"#1a1614";
@@ -812,6 +919,8 @@ function hydrate(loaded){
   const b = loaded.back||{};
   state.back.name = typeof b.name==="string"?b.name:"";
   state.back.url = typeof b.url==="string"?b.url:"";
+  state.back.showName = (typeof b.showName==="boolean") ? b.showName : !!(state.back.name && state.back.name.trim());
+  state.back.showQR = (typeof b.showQR==="boolean") ? b.showQR : !!(state.back.url && state.back.url.trim());
   state.back.bg = normImg(b.bg);
   state.back.font = b.font||FONTS[0].css;
   state.back.color = b.color||"#1a1614";
@@ -823,14 +932,23 @@ function normPos(p,def){ p=p||{}; return {x:num(p.x,def.x), y:num(p.y,def.y), s:
 function num(v,d){ return (typeof v==="number" && isFinite(v)) ? v : d; }
 function normImg(e){
   if(!e) return null;
-  // ox/oy are object-position % (0..100, 50=centre). Legacy entries used translate-offset % (0=centre)
-  // and are recentred to 50 on load (their old pan couldn't reveal overflow anyway).
-  if(typeof e==="string") return {src:e,scale:1,ox:50,oy:50,op:true,fit:false};
+  // UNIFIED PAN MODEL: px/py in -1..+1 (0=centre). Applied as object-position (50+px*50)% plus a
+  // translate for the zoom overflow. Migrate older tx/ty (translate %) and legacy ox/oy (object-pos)
+  // to a centred px/py — the mappings don't carry cleanly, so recentre; user re-positions freely.
+  if(typeof e==="string") return {src:e,scale:1,px:0,py:0,op:true,fit:false};
   if(typeof e==="object" && typeof e.src==="string"){
-    if(e.op) return {src:e.src, scale:num(e.scale,1), ox:num(e.ox,50), oy:num(e.oy,50), nw:num(e.nw,0), nh:num(e.nh,0), op:true, fit:!!e.fit};
-    return {src:e.src, scale:num(e.scale,1), ox:50, oy:50, nw:num(e.nw,0), nh:num(e.nh,0), op:true, fit:!!e.fit};
+    const px=num(e.px,0), py=num(e.py,0);
+    return {src:e.src, scale:num(e.scale,1), px:px, py:py, nw:num(e.nw,0), nh:num(e.nh,0), op:true, fit:!!e.fit};
   }
   return null;
+}
+/* shared transform: object-position handles the cover overflow, translate handles the zoom overflow.
+   Returns {op, tf} strings for the two style properties so editor paint & preview agree with panZoom. */
+function photoPos(d){
+  const s=Math.max(1,num(d.scale,1)), px=num(d.px,0), py=num(d.py,0);
+  const op=(50+px*50)+"% "+(50+py*50)+"%";
+  const tf="translate("+(-px*(s-1)*50)+"%,"+(-py*(s-1)*50)+"%) scale("+s+")";
+  return {op:op, tf:tf};
 }
 
 /* ---------------- pages ---------------- */
@@ -913,25 +1031,70 @@ function photoGroup(t){
   add.onclick=()=>openFilePicker((f)=>loadImg(f,(entry)=>{ t.bg=entry; save(); renderEditor(); }));
   const nodes=[add];
   if(t.bg){
-    const reset=document.createElement("button"); reset.className="ins-btn"; reset.textContent="Reset position"; reset.onclick=()=>{ t.bg.ox=50;t.bg.oy=50;t.bg.scale=1; save(); renderEditor(); };
+    const zo=document.createElement("button"); zo.className="ins-btn"; zo.textContent="Zoom −"; zo.onclick=()=>{ t.bg.scale=Math.max(1,t.bg.scale/1.15); save(); renderEditor(); };
+    const zi=document.createElement("button"); zi.className="ins-btn"; zi.textContent="Zoom +"; zi.onclick=()=>{ t.bg.scale=Math.min(4,t.bg.scale*1.15); save(); renderEditor(); };
+    const reset=document.createElement("button"); reset.className="ins-btn"; reset.textContent="Reset position"; reset.onclick=()=>{ t.bg.px=0;t.bg.py=0;t.bg.scale=1; save(); renderEditor(); };
+    const ft=document.createElement("button"); ft.className="ins-btn"; ft.textContent=t.bg.fit?"Fill (crop)":"Fit (whole photo)"; ft.onclick=()=>{ t.bg.fit=!t.bg.fit; if(t.bg.fit){ t.bg.px=0;t.bg.py=0;t.bg.scale=1; } save(); renderEditor(); };
     const rm=document.createElement("button"); rm.className="ins-btn danger"; rm.textContent="Remove photo"; rm.onclick=()=>{ t.bg=null; save(); renderEditor(); clearSelection(); };
-    nodes.push(reset,rm);
+    nodes.push(zo,zi,reset,ft,rm);
   } else {
     const h=document.createElement("span"); h.className="insp-hint"; h.textContent="drag to pan · scroll to zoom once added"; nodes.push(h);
   }
   return grp("Cover photo",...nodes);
 }
+/* front-cover "add / remove title" toggle for the bottom box */
+function coverElementsGroup(){
+  const b=document.createElement("button"); b.className="ins-btn"+(state.cover.showTitle?" danger":"");
+  b.textContent=state.cover.showTitle?"Remove title":"Add title";
+  b.onclick=()=>{ state.cover.showTitle=!state.cover.showTitle; if(state.cover.showTitle && !state.cover.title) state.cover.title=""; save(); renderEditor(); if(state.cover.showTitle) selectEl("cover-title"); };
+  return grp("Title", b);
+}
+/* back-cover "add / remove name" and "add / remove QR" toggles */
+function backElementsGroup(){
+  const nb=document.createElement("button"); nb.className="ins-btn"+(state.back.showName?" danger":"");
+  nb.textContent=state.back.showName?"Remove name":"Add name / handle";
+  nb.onclick=()=>{ state.back.showName=!state.back.showName; save(); renderEditor(); if(state.back.showName) selectEl("back-name"); };
+  const qb=document.createElement("button"); qb.className="ins-btn"+(state.back.showQR?" danger":"");
+  qb.textContent=state.back.showQR?"Remove QR code":"Add QR code";
+  qb.onclick=()=>{ state.back.showQR=!state.back.showQR; save(); renderEditor(); if(state.back.showQR) selectEl("back-qr"); };
+  return grp("Add to back", nb, qb);
+}
+/* inspector controls for a selected INTERIOR photo (state.pages[pageIdx].imgs[slotIdx]).
+   Mirrors the on-image buttons (zoom, fill/fit, reset, replace, remove) in the bottom box. */
+function photoSlotGroup(d){
+  const pg=state.pages[d.pageIdx]; if(!pg) return grp("Photo");
+  const entry=pg.imgs[d.slotIdx];
+  const put=(en)=>{ pg.imgs[d.slotIdx]=en; save(); renderEditor(); };
+  if(!entry){ const h=document.createElement("span"); h.className="insp-hint"; h.textContent="No photo here."; return grp("Photo",h); }
+  const zo=document.createElement("button"); zo.className="ins-btn"; zo.textContent="Zoom −"; zo.onclick=()=>{ entry.scale=Math.max(1,entry.scale/1.15); save(); renderEditor(); };
+  const zi=document.createElement("button"); zi.className="ins-btn"; zi.textContent="Zoom +"; zi.onclick=()=>{ entry.scale=Math.min(4,entry.scale*1.15); save(); renderEditor(); };
+  const rs=document.createElement("button"); rs.className="ins-btn"; rs.textContent="Reset position"; rs.onclick=()=>{ entry.scale=1; entry.px=0; entry.py=0; save(); renderEditor(); };
+  const ft=document.createElement("button"); ft.className="ins-btn"; ft.textContent=entry.fit?"Fill (crop)":"Fit (whole photo)"; ft.onclick=()=>{ entry.fit=!entry.fit; if(entry.fit){ entry.px=0; entry.py=0; entry.scale=1; } save(); renderEditor(); };
+  const rp=document.createElement("button"); rp.className="ins-btn"; rp.textContent="Replace photo"; rp.onclick=()=>openFilePicker((f)=>loadImg(f,put));
+  const rm=document.createElement("button"); rm.className="ins-btn danger"; rm.textContent="Remove photo"; rm.onclick=()=>{ pg.imgs[d.slotIdx]=null; save(); renderEditor(); clearSelection(); };
+  return grp("Photo", zo, zi, rs, ft, rp, rm);
+}
 function renderInspector(){
   const label=document.getElementById("inspLabel");
   const controls=document.getElementById("inspControls");
   const what=document.querySelector(".insp-what");
+  const panel=document.getElementById("inspector");
   controls.innerHTML="";
   const d=selection&&registry[selection];
-  if(!d){ what.classList.remove("active"); label.textContent="Nothing selected"; const h=document.createElement("span"); h.className="insp-hint"; h.textContent="Click a text box, the QR code, or a photo to edit it here."; controls.appendChild(h); return; }
+  // dismissible: the floating panel only appears when something is selected. Also mark body so the
+  // Give button can shift up to clear the inspector, and drop to the corner when it's hidden.
+  if(!d){ if(panel) panel.classList.remove("show"); document.body.classList.remove("inspector-open"); what.classList.remove("active"); return; }
+  if(panel) panel.classList.add("show"); document.body.classList.add("inspector-open");
   what.classList.add("active"); label.textContent=d.label;
   if(d.kind==="text"){ controls.appendChild(fontGroup(d.target)); controls.appendChild(colorGroup(d.target)); controls.appendChild(alignGroup(d.target)); controls.appendChild(sizeGroup(d.pos)); }
   else if(d.kind==="qr"){ controls.appendChild(qrGroup(d.target)); controls.appendChild(sizeGroup(d.pos)); }
-  else if(d.kind==="photo"){ controls.appendChild(photoGroup(d.target)); }
+  else if(d.kind==="photo"){
+    controls.appendChild(photoGroup(d.target));
+    // element add/remove toggles depend on which cover this is
+    if(d.id==="cover-photo") controls.appendChild(coverElementsGroup());
+    else if(d.id==="back-photo") controls.appendChild(backElementsGroup());
+  }
+  else if(d.kind==="photoslot"){ controls.appendChild(photoSlotGroup(d)); }
 }
 
 /* ---------------- draggable wrapper ---------------- */
@@ -1030,6 +1193,77 @@ function ensurePicker(){
   return _picker;
 }
 function openFilePicker(cb){ const p=ensurePicker(); _pickerCb=cb; p.click(); }
+
+/* ---- Photo tray (session-only) ----
+   Holds uploaded photos as {id,name,entry} so they can be dragged/tapped onto any slot and reused.
+   Deliberately NOT part of `state` and never saved to localStorage — big phone photos would blow the
+   ~5MB cap. The tray lives only for the current session and clears on reload. */
+let photoTray = [];            // [{id, name, entry}]
+let trayPicker = null;          // separate MULTI-file input (the main _picker is single-file)
+let trayPlaceSel = null;        // id of the tray photo tapped for tap-to-place on touch
+let trayCloseFn = null;         // set by the tray wiring; lets renderTray close the drawer mid-drag
+function ensureTrayPicker(){
+  if(trayPicker) return trayPicker;
+  trayPicker=document.createElement("input"); trayPicker.type="file"; trayPicker.accept="image/*"; trayPicker.multiple=true;
+  trayPicker.style.cssText="position:fixed;left:-9999px;width:1px;height:1px;opacity:0;";
+  trayPicker.addEventListener("change",(ev)=>{
+    const files=ev.target.files ? Array.prototype.slice.call(ev.target.files) : [];
+    try{ trayPicker.value=""; }catch(_){}
+    // load in filename order so the tray fills predictably (natural sort: photo2 before photo10)
+    files.sort((a,b)=>nameCmp(a.name||"",b.name||"")).forEach(addFileToTray);
+  });
+  document.body.appendChild(trayPicker);
+  return trayPicker;
+}
+/* natural, case-insensitive filename compare so "img2" < "img10" and case doesn't scramble order */
+function nameCmp(a,b){ return String(a).localeCompare(String(b), undefined, {numeric:true, sensitivity:"base"}); }
+function addFileToTray(file){
+  if(!file) return;
+  const name=file.name||"photo";
+  loadImg(file,(entry)=>{
+    photoTray.push({ id:"t"+Date.now()+"_"+Math.random().toString(36).slice(2,7), name:name, entry:entry });
+    renderTray();
+  });
+}
+function trayItemById(id){ for(let i=0;i<photoTray.length;i++){ if(photoTray[i].id===id) return photoTray[i]; } return null; }
+/* a fresh COPY of a tray photo's entry, so each placement pans/zooms independently and reuse is safe */
+function trayEntryCopy(id){ const it=trayItemById(id); if(!it) return null; const e=it.entry; return { src:e.src, scale:1, ox:50, oy:50, nw:e.nw, nh:e.nh, op:true, fit:false }; }
+
+/* place a tray photo into a specific interior slot or a cover/back target */
+function placeTrayInterior(pageIdx,slotIdx,id){ const entry=trayEntryCopy(id); if(!entry)return; if(!state.pages[pageIdx])return; state.pages[pageIdx].imgs[slotIdx]=entry; save(); renderEditor(); toast("Photo placed"); }
+function placeTrayCover(target,id){ const entry=trayEntryCopy(id); if(!entry)return; target.bg=entry; save(); renderEditor(); toast("Photo placed"); }
+
+/* render the tray grid + count badge */
+function renderTray(){
+  const grid=document.getElementById("trayGrid"); if(!grid) return;
+  // always show the tray in filename order (async decodes can otherwise land out of order)
+  photoTray.sort((a,b)=>nameCmp(a.name,b.name));
+  grid.innerHTML="";
+  const cnt=document.getElementById("photosCount");
+  if(cnt){ cnt.textContent=photoTray.length; cnt.hidden=photoTray.length===0; }
+  if(!photoTray.length){ const em=document.createElement("div"); em.className="tray-empty"; em.textContent="No photos yet. Tap “＋ Add photos to tray”."; grid.appendChild(em); return; }
+  photoTray.forEach((it)=>{
+    const cell=document.createElement("div"); cell.className="tray-cell"+(trayPlaceSel===it.id?" sel":""); cell.setAttribute("draggable","true"); cell.dataset.id=it.id;
+    const img=document.createElement("img"); img.src=it.entry.src; img.alt=it.name;
+    const nm=document.createElement("div"); nm.className="tray-name"; nm.textContent=it.name;
+    const del=document.createElement("button"); del.className="tray-del"; del.textContent="×"; del.title="Remove from tray";
+    del.onclick=(e)=>{ e.stopPropagation(); photoTray=photoTray.filter(p=>p.id!==it.id); if(trayPlaceSel===it.id)trayPlaceSel=null; renderTray(); };
+    // desktop drag: carry the tray id, and CLOSE the tray so the pages underneath become drop targets
+    cell.addEventListener("dragstart",(e)=>{
+      try{ e.dataTransfer.setData("text/tray-id",it.id); e.dataTransfer.effectAllowed="copy"; }catch(_){}
+      // slide the tray away on the next tick so it doesn't cancel the in-progress drag
+      setTimeout(()=>{ if(trayCloseFn) trayCloseFn(); },0);
+    });
+    // tap-to-place (touch + click): select this photo, then the next slot tap places it
+    cell.addEventListener("click",(e)=>{ if(e.target===del)return; trayPlaceSel=(trayPlaceSel===it.id?null:it.id); renderTray(); markPlaceTargets(); if(trayPlaceSel)toast("Now tap a page slot to place it"); });
+    cell.appendChild(img); cell.appendChild(nm); cell.appendChild(del); grid.appendChild(cell);
+  });
+}
+/* toggle the dashed highlight on empty-ish slots while a tray photo is armed for tap-to-place */
+function markPlaceTargets(){
+  const on=!!trayPlaceSel;
+  document.querySelectorAll(".slot").forEach(s=>{ s.classList.toggle("place-target",on); });
+}
 function loadImg(file,cb){
   if(!file) return;
   // Don't hard-gate on file.type — the desktop (Tauri) WebView often reports an EMPTY MIME type
@@ -1045,36 +1279,52 @@ function loadImg(file,cb){
     img.onerror=()=>{ console.error("Image decode failed"); toast("Couldn't open that image"); };
     img.onload=()=>{ const max=2400; let w=img.width,h=img.height; const sc=Math.min(1,max/Math.max(w,h)); const c=document.createElement("canvas"); c.width=Math.round(w*sc); c.height=Math.round(h*sc); c.getContext("2d").drawImage(img,0,0,c.width,c.height);
       let src; try{ src=c.toDataURL("image/jpeg",0.92); }catch(e){ console.error("toDataURL failed",e); src=r.result; }   // fall back to the raw data URL
-      cb({src, scale:1, ox:50, oy:50, nw:c.width, nh:c.height, op:true}); };
+      cb({src, scale:1, px:0, py:0, nw:c.width, nh:c.height, op:true, fit:false}); };
     img.src=r.result;
   };
   r.readAsDataURL(file);
 }
 
 function panZoom(img, container, entry){
-  let sx,sy,box,boy,drag=false;
-  // pinch state
+  let sx,sy,bpx,bpy,drag=false;
   let pinch=false, pinchStartDist=0, pinchStartScale=1;
-  const clampPan=()=>{
-    // ox/oy are OBJECT-POSITION percentages (0..100, 50=centred). object-fit:cover crops the
-    // overflow; object-position slides that crop window, so a horizontal photo in a vertical slot
-    // can be panned across its full width even at scale 1. Clamp to 0..100.
-    entry.ox=Math.max(0,Math.min(100,entry.ox));
-    entry.oy=Math.max(0,Math.min(100,entry.oy));
+  // UNIFIED FREE-PAN: px/py are normalised pan in -1..+1 (0=centre, -1=show left/top edge,
+  // +1=show right/bottom edge). This reaches the FULL photo on BOTH axes for any slot shape and
+  // any zoom (fixes: a portrait photo in a wide slot couldn't be panned across its width).
+  //   object-position (50 + px*50)%  pans the COVER-fit overflow (exists even at scale 1)
+  //   translate(px*(s-1)*50%)        pans the extra overflow added by zoom
+  // px=±1 always lands exactly on the photo edge, so there's never any white.
+  if(entry.px==null) entry.px=0; if(entry.py==null) entry.py=0;
+  const clampPan=()=>{ entry.px=Math.max(-1,Math.min(1,entry.px)); entry.py=Math.max(-1,Math.min(1,entry.py)); };
+  const apply=()=>{
+    const s=Math.max(1, entry.scale||1);
+    // object-position (50+px*50)% shifts content LEFT for +px (shows the right side); the zoom-overflow
+    // translate MUST shift the same way, so use -px here (a + would fight object-position — that was
+    // the inverted/inconsistent-pan bug). px=+1 => see right/bottom edge, matching the print canvas.
+    img.style.objectPosition=(50+entry.px*50)+"% "+(50+entry.py*50)+"%";
+    const ex=-entry.px*(s-1)*50, ey=-entry.py*(s-1)*50;
+    img.style.transform="translate("+ex+"%,"+ey+"%) scale("+s+")";
   };
-  // pan via object-position (reveals the cropped-off sides); zoom via transform:scale.
-  const apply=()=>{ img.style.objectPosition=entry.ox+"% "+entry.oy+"%"; img.style.transform="scale("+entry.scale+")"; };
   const dist=(t)=>{ const dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.hypot(dx,dy); };
   function down(e){
-    // two fingers => start pinch-zoom; one finger => pan
     if(e.touches && e.touches.length>=2){
       pinch=true; drag=false; pinchStartDist=dist(e.touches)||1; pinchStartScale=entry.scale;
       container.classList.add("panning"); e.preventDefault();
       window.addEventListener("touchmove",move,{passive:false}); window.addEventListener("touchend",up);
       return;
     }
-    drag=true; pinch=false; const p=e.touches?e.touches[0]:e; sx=p.clientX;sy=p.clientY;box=entry.ox;boy=entry.oy; container.classList.add("panning"); e.preventDefault();
+    drag=true; pinch=false; const p=e.touches?e.touches[0]:e; sx=p.clientX;sy=p.clientY;bpx=entry.px;bpy=entry.py; container.classList.add("panning"); e.preventDefault();
     window.addEventListener("mousemove",move); window.addEventListener("touchmove",move,{passive:false}); window.addEventListener("mouseup",up); window.addEventListener("touchend",up);
+  }
+  // how many px of drag equal a full -1..+1 sweep on each axis (= the total overflow in px).
+  function overflowPx(){
+    const s=Math.max(1, entry.scale||1);
+    const bw=container.clientWidth||1, bh=container.clientHeight||1, br=bw/bh;
+    const ir=(entry.nw&&entry.nh)?entry.nw/entry.nh:1;
+    // cover content size (short side fills, long side overflows), then * scale
+    let cw,ch; if(ir>br){ ch=bh; cw=bh*ir; } else { cw=bw; ch=bw/ir; }
+    cw*=s; ch*=s;
+    return { x:Math.max(1,(cw-bw)), y:Math.max(1,(ch-bh)) };   // full travel in px per axis
   }
   function move(e){
     if(pinch && e.touches && e.touches.length>=2){
@@ -1084,9 +1334,12 @@ function panZoom(img, container, entry){
       clampPan(); apply(); return;
     }
     if(!drag)return; if(e.cancelable)e.preventDefault();
-    const p=e.touches?e.touches[0]:e; const r=container.getBoundingClientRect();
-    // drag the photo: moving right reveals the left side -> object-position decreases
-    entry.ox=box-((p.clientX-sx)/r.width)*100; entry.oy=boy-((p.clientY-sy)/r.height)*100; clampPan(); apply();
+    const p=e.touches?e.touches[0]:e; const ov=overflowPx();
+    // "grab the photo": drag right => photo moves right => reveals its LEFT side => px decreases.
+    // (Editor & canvas both treat px=+1 as showing the right/bottom edge.) Full overflow = -1..+1.
+    entry.px=bpx-((p.clientX-sx)/(ov.x/2));
+    entry.py=bpy-((p.clientY-sy)/(ov.y/2));
+    clampPan(); apply();
   }
   function up(e){
     // if a pinch drops to <2 fingers, end the gesture
@@ -1292,6 +1545,7 @@ function renderEditor(){
   host.className="spread-view"+(idxs.length===1?" single":"");
   idxs.forEach(i=> host.appendChild(buildPageCard(i,total)) );
   reselect();
+  markPlaceTargets();   // keep tap-to-place highlights after a re-render if a tray photo is armed
 }
 
 function imageSlot(pageIdx,slotIdx){
@@ -1302,35 +1556,38 @@ function imageSlot(pageIdx,slotIdx){
   const d=pg.imgs[slotIdx];
   slot.className="slot"+(d?" has-img":"");
   if(d){
+    const selId="img-"+pageIdx+"-"+slotIdx;
+    // register this filled slot so the bottom inspector can edit it, like covers do
+    const slotLbl = (pg.imgs.length>1) ? (" photo "+(slotIdx+1)) : " photo";
+    registry[selId]={ id:selId, kind:"photoslot", label:"Page "+pageIdx+slotLbl, pageIdx:pageIdx, slotIdx:slotIdx, coverEl:slot };
     const img=document.createElement("img"); img.className="photo"+(d.fit?" fit":""); img.src=d.src;
-    if(d.fit){ img.style.transform="scale("+d.scale+")"; } else { img.style.objectPosition=d.ox+"% "+d.oy+"%"; img.style.transform="scale("+d.scale+")"; }
+    if(d.fit){ img.style.transform="scale("+d.scale+")"; } else { const pp=photoPos(d); img.style.objectPosition=pp.op; img.style.transform=pp.tf; }
     slot.appendChild(img);
+    // select on tap so the bottom box activates (mousedown for desktop, touchstart for phones;
+    // pan's own preventDefault suppresses the synthetic click, mirroring how covers select)
+    img.addEventListener("mousedown",()=>selectEl(selId));
+    img.addEventListener("touchstart",()=>selectEl(selId),{passive:true});
     if(!d.fit) panZoom(img,slot,d);   // no panning when the whole photo is shown
-    const ctrls=document.createElement("div"); ctrls.className="img-ctrls";
-    const zi=document.createElement("button"); zi.textContent="+"; zi.title="Zoom in"; const zo=document.createElement("button"); zo.textContent="−"; zo.title="Zoom out"; const rs=document.createElement("button"); rs.textContent="↺"; rs.title="Reset zoom & position";
-    zi.onclick=(e)=>{e.stopPropagation(); d.scale=Math.min(4,d.scale*1.15); save(); renderEditor();};
-    zo.onclick=(e)=>{e.stopPropagation(); d.scale=Math.max(1,d.scale/1.15); save(); renderEditor();};
-    rs.onclick=(e)=>{e.stopPropagation(); d.scale=1;d.ox=50;d.oy=50; save(); renderEditor();};
-    // Fill (crop to fill) vs Fit (show whole photo, letterboxed) toggle
-    const ft=document.createElement("button"); ft.textContent=d.fit?"⤢":"▣"; ft.title=d.fit?"Fill frame (crop)":"Fit whole photo";
-    ft.onclick=(e)=>{ e.stopPropagation(); d.fit=!d.fit; if(d.fit){ d.ox=50; d.oy=50; d.scale=1; } save(); renderEditor(); };
-    // replace-photo button (since the full-cover file input is only present when empty)
-    const rp=document.createElement("button"); rp.textContent="⇄"; rp.title="Replace photo";
-    rp.onclick=(e)=>{ e.stopPropagation(); openFilePicker((f)=>loadImg(f,putImg)); };
-    const del=document.createElement("button"); del.textContent="×"; del.title="Remove photo"; del.className="del";
-    del.onclick=(e)=>{ e.stopPropagation(); pg.imgs[slotIdx]=null; save(); renderEditor(); };
-    ctrls.appendChild(zo); ctrls.appendChild(zi); ctrls.appendChild(rs); ctrls.appendChild(ft); ctrls.appendChild(rp); ctrls.appendChild(del); slot.appendChild(ctrls);
+    // on-image control buttons removed — all photo editing lives in the bottom inspector box now
   } else {
     // empty: tap to open the picker (routes through openFilePicker -> native dialog in the app,
     // persistent hidden input on the web). No per-slot <input> so nothing to break on re-render.
-    const ph=document.createElement("div"); ph.className="placeholder"; ph.textContent="Tap or drop photo"; slot.appendChild(ph);
+    const ph=document.createElement("div"); ph.className="placeholder"; ph.innerHTML='<span class="ph-opt">Tap slot</span><span class="ph-div"></span><span class="ph-opt">Drag from tray</span>'; slot.appendChild(ph);
     slot.style.cursor="pointer";
-    slot.addEventListener("click",(e)=>{ if(e.target.closest(".img-ctrls")) return; openFilePicker((f)=>loadImg(f,putImg)); });
+    slot.addEventListener("click",(e)=>{
+      if(e.target.closest(".img-ctrls")) return;
+      // if a tray photo is armed for tap-to-place, place it here instead of opening the picker
+      if(trayPlaceSel){ const id=trayPlaceSel; trayPlaceSel=null; markPlaceTargets(); placeTrayInterior(pageIdx,slotIdx,id); renderTray(); return; }
+      openFilePicker((f)=>loadImg(f,putImg));
+    });
   }
   slot.addEventListener("dragover",e=>{e.preventDefault(); slot.classList.add("drag");});
   slot.addEventListener("dragleave",()=>slot.classList.remove("drag"));
   slot.addEventListener("drop",e=>{
     e.preventDefault(); slot.classList.remove("drag");
+    // a photo dragged from the tray carries its id; a file dragged from the desktop carries files
+    let trayId=""; try{ trayId=e.dataTransfer.getData("text/tray-id"); }catch(_){}
+    if(trayId){ placeTrayInterior(pageIdx,slotIdx,trayId); return; }
     const f=e.dataTransfer.files[0]; if(f)loadImg(f,putImg);
   });
   return slot;
@@ -1344,8 +1601,8 @@ function coverPhotoControls(target, selId){
   const mk=(txt,title,fn,cls)=>{ const b=document.createElement("button"); b.textContent=txt; b.title=title; if(cls)b.className=cls; b.onclick=(e)=>{ e.stopPropagation(); fn(); }; return b; };
   const zo=mk("−","Zoom out",()=>{ d.scale=Math.max(1,d.scale/1.15); save(); renderEditor(); });
   const zi=mk("+","Zoom in",()=>{ d.scale=Math.min(4,d.scale*1.15); save(); renderEditor(); });
-  const rs=mk("↺","Reset zoom & position",()=>{ d.scale=1; d.ox=50; d.oy=50; save(); renderEditor(); });
-  const ft=mk(d.fit?"⤢":"▣", d.fit?"Fill frame (crop)":"Fit whole photo",()=>{ d.fit=!d.fit; if(d.fit){ d.ox=50; d.oy=50; d.scale=1; } save(); renderEditor(); });
+  const rs=mk("↺","Reset zoom & position",()=>{ d.scale=1; d.px=0; d.py=0; save(); renderEditor(); });
+  const ft=mk(d.fit?"⤢":"▣", d.fit?"Fill frame (crop)":"Fit whole photo",()=>{ d.fit=!d.fit; if(d.fit){ d.px=0; d.py=0; d.scale=1; } save(); renderEditor(); });
   const rp=mk("⇄","Replace photo",()=>{ openFilePicker((f)=>loadImg(f,(entry)=>{ target.bg=entry; save(); renderEditor(); })); });
   const del=mk("×","Remove photo",()=>{ target.bg=null; save(); renderEditor(); },"del");
   ctrls.appendChild(zo); ctrls.appendChild(zi); ctrls.appendChild(rs); ctrls.appendChild(ft); ctrls.appendChild(rp); ctrls.appendChild(del);
@@ -1361,18 +1618,36 @@ function addPhotoChip(setBg){
 function coverSlot(){
   const wrap=document.createElement("div"); wrap.className="slot coverwrap"; wrap.style.background="#fff";
   registry["cover-photo"]={id:"cover-photo",kind:"photo",label:"Front cover photo",target:state.cover,coverEl:wrap};
-  if(state.cover.bg){ const bg=document.createElement("img"); bg.className="cover-bg"+(state.cover.bg.fit?" fit":""); bg.src=state.cover.bg.src; if(state.cover.bg.fit){ bg.style.transform="scale("+state.cover.bg.scale+")"; } else { bg.style.objectPosition=state.cover.bg.ox+"% "+state.cover.bg.oy+"%"; bg.style.transform="scale("+state.cover.bg.scale+")"; } wrap.appendChild(bg); if(!state.cover.bg.fit) panZoom(bg,wrap,state.cover.bg); bg.addEventListener("mousedown",()=>selectEl("cover-photo")); bg.addEventListener("touchstart",()=>selectEl("cover-photo"),{passive:true}); wrap.classList.add("has-img"); wrap.appendChild(coverPhotoControls(state.cover,"cover-photo")); }
-  const title=document.createElement("textarea"); title.className="field"; title.rows=1; title.placeholder="ZINE TITLE"; title.value=state.cover.title; title.style.fontFamily=state.cover.font; title.style.color=state.cover.color; title.style.textShadow=shadowFor(state.cover.color); title.style.textAlign=state.cover.align||"center";
-  title.oninput=()=>{ state.cover.title=title.value; autosize(title); save(); };
-  title.onfocus=()=>selectEl("cover-title");
-  const tw=makeDraggable(title,wrap,state.cover.pos.title,"cover-title",false);
-  registry["cover-title"]={id:"cover-title",kind:"text",label:"Front cover title",target:state.cover,pos:state.cover.pos.title,wrapEl:tw};
-  wrap.appendChild(tw);
+  if(state.cover.bg){ const bg=document.createElement("img"); bg.className="cover-bg"+(state.cover.bg.fit?" fit":""); bg.src=state.cover.bg.src; if(state.cover.bg.fit){ bg.style.transform="scale("+state.cover.bg.scale+")"; } else { const pp=photoPos(state.cover.bg); bg.style.objectPosition=pp.op; bg.style.transform=pp.tf; } wrap.appendChild(bg); if(!state.cover.bg.fit) panZoom(bg,wrap,state.cover.bg); bg.addEventListener("mousedown",()=>selectEl("cover-photo")); bg.addEventListener("touchstart",()=>selectEl("cover-photo"),{passive:true}); wrap.classList.add("has-img"); }
+  else { const ph=document.createElement("div"); ph.className="placeholder cover-ph"; ph.innerHTML='<span class="ph-opt">Tap slot</span><span class="ph-div"></span><span class="ph-opt">Drag from tray</span>'; wrap.appendChild(ph); }
+  // title only shows when enabled (added via the bottom box). Existing zines with a title keep it.
+  if(state.cover.showTitle){
+    const title=document.createElement("textarea"); title.className="field"; title.rows=1; title.placeholder="ZINE TITLE"; title.value=state.cover.title; title.style.fontFamily=state.cover.font; title.style.color=state.cover.color; title.style.textShadow=shadowFor(state.cover.color); title.style.textAlign=state.cover.align||"center";
+    title.oninput=()=>{ state.cover.title=title.value; autosize(title); save(); };
+    title.onfocus=()=>selectEl("cover-title");
+    const tw=makeDraggable(title,wrap,state.cover.pos.title,"cover-title",false);
+    registry["cover-title"]={id:"cover-title",kind:"text",label:"Front cover title",target:state.cover,pos:state.cover.pos.title,wrapEl:tw};
+    wrap.appendChild(tw);
+    setTimeout(()=>autosize(title),0);
+  }
   wrap.addEventListener("mousedown",(e)=>{ if(e.target===wrap) selectEl("cover-photo"); });
   wrap.addEventListener("touchstart",(e)=>{ if(e.target===wrap) selectEl("cover-photo"); },{passive:true});
-  // tap anywhere on the empty cover (except the title text / handles) to add a photo when none is set
-  wrap.addEventListener("click",(e)=>{ if(!state.cover.bg && !e.target.closest(".dwrap") && !e.target.closest(".img-ctrls")) openFilePicker((f)=>loadImg(f,(entry)=>{ state.cover.bg=entry; save(); renderEditor(); })); });
-  setTimeout(()=>autosize(title),0);
+  // tap the cover: place an armed tray photo; else select it. If it's EMPTY, also open the picker
+  // (matches interior slots — tap blank area to upload). With a photo, tap only selects.
+  wrap.addEventListener("click",(e)=>{
+    if(e.target.closest(".dwrap")) return;
+    if(trayPlaceSel){ const id=trayPlaceSel; trayPlaceSel=null; markPlaceTargets(); placeTrayCover(state.cover,id); renderTray(); return; }
+    if(e.target===wrap){
+      selectEl("cover-photo");
+      if(!state.cover.bg) openFilePicker((f)=>loadImg(f,(entry)=>{ state.cover.bg=entry; save(); renderEditor(); }));
+    }
+  });
+  wrap.addEventListener("dragover",e=>{e.preventDefault();});
+  wrap.addEventListener("drop",e=>{
+    let trayId=""; try{ trayId=e.dataTransfer.getData("text/tray-id"); }catch(_){}
+    if(trayId){ e.preventDefault(); placeTrayCover(state.cover,trayId); return; }
+    const f=e.dataTransfer.files&&e.dataTransfer.files[0]; if(f){ e.preventDefault(); loadImg(f,(entry)=>{ state.cover.bg=entry; save(); renderEditor(); }); }
+  });
   return wrap;
 }
 /* open the file picker to set a cover/back background photo */
@@ -1382,21 +1657,41 @@ function pickCoverPhoto(target){
 function backSlot(){
   const wrap=document.createElement("div"); wrap.className="slot coverwrap"; wrap.style.background="#fff";
   registry["back-photo"]={id:"back-photo",kind:"photo",label:"Back cover photo",target:state.back,coverEl:wrap};
-  if(state.back.bg){ const bg=document.createElement("img"); bg.className="cover-bg"+(state.back.bg.fit?" fit":""); bg.src=state.back.bg.src; if(state.back.bg.fit){ bg.style.transform="scale("+state.back.bg.scale+")"; } else { bg.style.objectPosition=state.back.bg.ox+"% "+state.back.bg.oy+"%"; bg.style.transform="scale("+state.back.bg.scale+")"; } wrap.appendChild(bg); if(!state.back.bg.fit) panZoom(bg,wrap,state.back.bg); bg.addEventListener("mousedown",()=>selectEl("back-photo")); bg.addEventListener("touchstart",()=>selectEl("back-photo"),{passive:true}); wrap.classList.add("has-img"); wrap.appendChild(coverPhotoControls(state.back,"back-photo")); }
-  const name=document.createElement("input"); name.className="field name"; name.placeholder="your name / handle"; name.value=state.back.name; name.style.fontFamily=state.back.font; name.style.color=state.back.color; name.style.textShadow=shadowFor(state.back.color); name.style.textAlign=state.back.align||"center";
-  name.oninput=()=>{ state.back.name=name.value; save(); };
-  name.onfocus=()=>selectEl("back-name");
-  const nw=makeDraggable(name,wrap,state.back.pos.name,"back-name",false);
-  registry["back-name"]={id:"back-name",kind:"text",label:"Back cover name",target:state.back,pos:state.back.pos.name,wrapEl:nw};
-  const qbox=document.createElement("div"); const qc=document.createElement("canvas"); qbox.appendChild(qc);
-  const qw=makeDraggable(qbox,wrap,state.back.pos.qr,"back-qr",true);
-  registry["back-qr"]={id:"back-qr",kind:"qr",label:"QR code",target:state.back,pos:state.back.pos.qr,wrapEl:qw};
-  wrap.appendChild(nw); wrap.appendChild(qw);
+  if(state.back.bg){ const bg=document.createElement("img"); bg.className="cover-bg"+(state.back.bg.fit?" fit":""); bg.src=state.back.bg.src; if(state.back.bg.fit){ bg.style.transform="scale("+state.back.bg.scale+")"; } else { const pp=photoPos(state.back.bg); bg.style.objectPosition=pp.op; bg.style.transform=pp.tf; } wrap.appendChild(bg); if(!state.back.bg.fit) panZoom(bg,wrap,state.back.bg); bg.addEventListener("mousedown",()=>selectEl("back-photo")); bg.addEventListener("touchstart",()=>selectEl("back-photo"),{passive:true}); wrap.classList.add("has-img"); }
+  else { const ph=document.createElement("div"); ph.className="placeholder cover-ph"; ph.innerHTML='<span class="ph-opt">Tap slot</span><span class="ph-div"></span><span class="ph-opt">Drag from tray</span>'; wrap.appendChild(ph); }
+  // name only shows when enabled
+  if(state.back.showName){
+    const name=document.createElement("input"); name.className="field name"; name.placeholder="your name / handle"; name.value=state.back.name; name.style.fontFamily=state.back.font; name.style.color=state.back.color; name.style.textShadow=shadowFor(state.back.color); name.style.textAlign=state.back.align||"center";
+    name.oninput=()=>{ state.back.name=name.value; save(); };
+    name.onfocus=()=>selectEl("back-name");
+    const nw=makeDraggable(name,wrap,state.back.pos.name,"back-name",false);
+    registry["back-name"]={id:"back-name",kind:"text",label:"Back cover name",target:state.back,pos:state.back.pos.name,wrapEl:nw};
+    wrap.appendChild(nw);
+  }
+  // QR only shows when enabled
+  if(state.back.showQR){
+    const qbox=document.createElement("div"); const qc=document.createElement("canvas"); qbox.appendChild(qc);
+    const qw=makeDraggable(qbox,wrap,state.back.pos.qr,"back-qr",true);
+    registry["back-qr"]={id:"back-qr",kind:"qr",label:"QR code",target:state.back,pos:state.back.pos.qr,wrapEl:qw};
+    wrap.appendChild(qw);
+    setTimeout(()=>QR.render(qc,state.back.url||""),0);
+  }
   wrap.addEventListener("mousedown",(e)=>{ if(e.target===wrap) selectEl("back-photo"); });
   wrap.addEventListener("touchstart",(e)=>{ if(e.target===wrap) selectEl("back-photo"); },{passive:true});
-  // tap anywhere on the empty back cover (except the name/QR/handles) to add a photo when none is set
-  wrap.addEventListener("click",(e)=>{ if(!state.back.bg && !e.target.closest(".dwrap") && !e.target.closest(".img-ctrls")) openFilePicker((f)=>loadImg(f,(entry)=>{ state.back.bg=entry; save(); renderEditor(); })); });
-  setTimeout(()=>QR.render(qc,state.back.url||""),0);
+  wrap.addEventListener("click",(e)=>{
+    if(e.target.closest(".dwrap")) return;
+    if(trayPlaceSel){ const id=trayPlaceSel; trayPlaceSel=null; markPlaceTargets(); placeTrayCover(state.back,id); renderTray(); return; }
+    if(e.target===wrap){
+      selectEl("back-photo");
+      if(!state.back.bg) openFilePicker((f)=>loadImg(f,(entry)=>{ state.back.bg=entry; save(); renderEditor(); }));
+    }
+  });
+  wrap.addEventListener("dragover",e=>{e.preventDefault();});
+  wrap.addEventListener("drop",e=>{
+    let trayId=""; try{ trayId=e.dataTransfer.getData("text/tray-id"); }catch(_){}
+    if(trayId){ e.preventDefault(); placeTrayCover(state.back,trayId); return; }
+    const f=e.dataTransfer.files&&e.dataTransfer.files[0]; if(f){ e.preventDefault(); loadImg(f,(entry)=>{ state.back.bg=entry; save(); renderEditor(); }); }
+  });
   return wrap;
 }
 
@@ -1439,21 +1734,23 @@ function panelHTML(idx, panelHmm){
   if(idx<0) return '<div class="pnl-empty"></div>';
   if(idx===0){
     const p=state.cover.pos.title, ff=state.cover.font, col=state.cover.color, al=state.cover.align||"center";
-    const bg=state.cover.bg?'<img class="pbg" style="object-position:'+state.cover.bg.ox+'% '+state.cover.bg.oy+'%;transform:scale('+state.cover.bg.scale+')" src="'+state.cover.bg.src+'">':"";
-    return '<div class="pnl-cover">'+bg+'<div class="ptext" style="left:'+p.x+'%;top:'+p.y+'%;transform:translate(-50%,-50%) scale('+(p.s||1)+');font-family:'+ff+';font-weight:900;text-transform:uppercase;font-size:'+titleMM+';color:'+col+';text-align:'+al+';text-shadow:'+shadowFor(col)+'">'+esc(state.cover.title)+'</div></div>';
+    const bg=state.cover.bg?(function(){var pp=photoPos(state.cover.bg);return '<img class="pbg" style="object-position:'+pp.op+';transform:'+pp.tf+'" src="'+state.cover.bg.src+'">';})():"";
+    const titleHtml=state.cover.showTitle?'<div class="ptext" style="left:'+p.x+'%;top:'+p.y+'%;transform:translate(-50%,-50%) scale('+(p.s||1)+');font-family:'+ff+';font-weight:900;text-transform:uppercase;font-size:'+titleMM+';color:'+col+';text-align:'+al+';text-shadow:'+shadowFor(col)+'">'+esc(state.cover.title)+'</div>':"";
+    return '<div class="pnl-cover">'+bg+titleHtml+'</div>';
   }
   if(idx===total-1){
     const pn=state.back.pos.name, pq=state.back.pos.qr, ff=state.back.font, col=state.back.color, al=state.back.align||"center";
-    const bg=state.back.bg?'<img class="pbg" style="object-position:'+state.back.bg.ox+'% '+state.back.bg.oy+'%;transform:scale('+state.back.bg.scale+')" src="'+state.back.bg.src+'">':"";
-    const qr=state.back.url?'<img class="pqr" style="left:'+pq.x+'%;top:'+pq.y+'%;width:'+qrMM+';height:'+qrMM+';transform:translate(-50%,-50%) scale('+(pq.s||1)+')" src="'+QR.dataURL(state.back.url,300)+'">':"";
-    return '<div class="pnl-back">'+bg+'<div class="ptext" style="left:'+pn.x+'%;top:'+pn.y+'%;transform:translate(-50%,-50%) scale('+(pn.s||1)+');font-family:'+ff+';font-weight:bold;font-size:'+nameMM+';color:'+col+';text-align:'+al+';text-shadow:'+shadowFor(col)+'">'+esc(state.back.name)+'</div>'+qr+'</div>';
+    const bg=state.back.bg?(function(){var pp=photoPos(state.back.bg);return '<img class="pbg" style="object-position:'+pp.op+';transform:'+pp.tf+'" src="'+state.back.bg.src+'">';})():"";
+    const qr=(state.back.showQR&&state.back.url)?'<img class="pqr" style="left:'+pq.x+'%;top:'+pq.y+'%;width:'+qrMM+';height:'+qrMM+';transform:translate(-50%,-50%) scale('+(pq.s||1)+')" src="'+QR.dataURL(state.back.url,300)+'">':"";
+    const nameHtml=state.back.showName?'<div class="ptext" style="left:'+pn.x+'%;top:'+pn.y+'%;transform:translate(-50%,-50%) scale('+(pn.s||1)+');font-family:'+ff+';font-weight:bold;font-size:'+nameMM+';color:'+col+';text-align:'+al+';text-shadow:'+shadowFor(col)+'">'+esc(state.back.name)+'</div>':"";
+    return '<div class="pnl-back">'+bg+nameHtml+qr+'</div>';
   }
   const pg=state.pages[idx];
   if(!pg) return '<div class="pnl-empty"></div>';
   if(pg.layout==="split") return '<div class="pnl-split">'+phimg(pg.imgs[0])+phimg(pg.imgs[1])+'</div>';
   return '<div class="pnl-single">'+phimg(pg.imgs[0])+'</div>';
 }
-function phimg(d){ if(!d) return '<div class="ph empty"></div>'; const of=d.fit?'object-fit:contain;':('object-position:'+d.ox+'% '+d.oy+'%;'); return '<div class="ph"><img style="'+of+'transform:scale('+d.scale+')" src="'+d.src+'"></div>'; }
+function phimg(d){ if(!d) return '<div class="ph empty"></div>'; var of; if(d.fit){ of='object-fit:contain;transform:scale('+num(d.scale,1)+');'; } else { var pp=photoPos(d); of='object-position:'+pp.op+';transform:'+pp.tf+';'; } return '<div class="ph"><img style="'+of+'" src="'+d.src+'"></div>'; }
 
 function buildSheets(){
   const host=document.getElementById("sheetHost"); host.innerHTML="";
@@ -1532,8 +1829,8 @@ function sheetPx(){
 }
 function loadImageEl(src){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
 
-/* draw a pan/zoom photo (object-fit:cover + object-position ox% oy% + scale) into rect x,y,w,h.
-   Matches the editor: object-position slides the cover-fit crop window; ox/oy are 0..100 (50=centre). */
+/* draw a pan/zoom photo (object-fit:cover, centred, then transform:translate(tx%,ty%) scale(s))
+   into rect x,y,w,h. Matches the editor's FREE-PAN model: tx/ty are % of the box, 0=centred. */
 function drawCoverPhoto(ctx, img, entry, x, y, w, h){
   ctx.save();
   ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
@@ -1545,11 +1842,15 @@ function drawCoverPhoto(ctx, img, entry, x, y, w, h){
     dw*=entry.scale; dh*=entry.scale;
     ctx.drawImage(img, x+(w-dw)/2, y+(h-dh)/2, dw, dh);
   } else {
-    // COVER: fill the box, crop overflow; object-position ox%/oy% slides the crop
+    // COVER: fill the box (short side), scale, then pan. px/py are -1..+1 (0=centre); px=+1 puts the
+    // content's right/bottom edge flush to the box edge. Max shift each axis = (content-box)/2, so
+    // offset-from-centre = -px*(content-box)/2. This is exactly what the editor's object-position +
+    // zoom-translate combination produces, keeping print === editor with no white.
     if(ir>br){ dh=h; dw=h*ir; } else { dw=w; dh=w/ir; }
     dw*=entry.scale; dh*=entry.scale;
-    const ox=(entry.ox==null?50:entry.ox), oy=(entry.oy==null?50:entry.oy);
-    ctx.drawImage(img, x-(dw-w)*(ox/100), y-(dh-h)*(oy/100), dw, dh);
+    const px=num(entry.px,0), py=num(entry.py,0);
+    const dx=-px*(dw-w)/2, dy=-py*(dh-h)/2;
+    ctx.drawImage(img, x+(w-dw)/2+dx, y+(h-dh)/2+dy, dw, dh);
   }
   ctx.restore();
 }
@@ -1600,13 +1901,13 @@ async function renderPanelToCanvas(ctx, idx, px, py, pw, ph){
   if(idx<0) return;
   if(idx===0){
     if(state.cover.bg){ try{ const im=await loadImageEl(state.cover.bg.src); drawCoverPhoto(ctx,im,state.cover.bg,px,py,pw,ph); }catch(e){} }
-    drawText(ctx,state.cover.title,state.cover.pos.title,px,py,pw,ph,{ratio:0.040,weight:"900",font:state.cover.font,color:state.cover.color,align:state.cover.align,upper:true});
+    if(state.cover.showTitle) drawText(ctx,state.cover.title,state.cover.pos.title,px,py,pw,ph,{ratio:0.040,weight:"900",font:state.cover.font,color:state.cover.color,align:state.cover.align,upper:true});
     return;
   }
   if(idx===total-1){
     if(state.back.bg){ try{ const im=await loadImageEl(state.back.bg.src); drawCoverPhoto(ctx,im,state.back.bg,px,py,pw,ph); }catch(e){} }
-    drawText(ctx,state.back.name,state.back.pos.name,px,py,pw,ph,{ratio:0.030,weight:"bold",font:state.back.font,color:state.back.color,align:state.back.align,upper:false});
-    if(state.back.url){ try{ const qd=QR.dataURL(state.back.url,600); const im=await loadImageEl(qd); const pq=state.back.pos.qr; const qs=(ph*0.176)*(pq.s||1); const qx=px+(pq.x/100)*pw-qs/2; const qy=py+(pq.y/100)*ph-qs/2; ctx.drawImage(im,qx,qy,qs,qs); }catch(e){} }
+    if(state.back.showName) drawText(ctx,state.back.name,state.back.pos.name,px,py,pw,ph,{ratio:0.030,weight:"bold",font:state.back.font,color:state.back.color,align:state.back.align,upper:false});
+    if(state.back.showQR && state.back.url){ try{ const qd=QR.dataURL(state.back.url,600); const im=await loadImageEl(qd); const pq=state.back.pos.qr; const qs=(ph*0.176)*(pq.s||1); const qx=px+(pq.x/100)*pw-qs/2; const qy=py+(pq.y/100)*ph-qs/2; ctx.drawImage(im,qx,qy,qs,qs); }catch(e){} }
     return;
   }
   const pg=state.pages[idx]; if(!pg) return;
@@ -2183,6 +2484,44 @@ document.addEventListener("keydown",(e)=>{
   document.getElementById("drawerClose").onclick=closeDrawer;
   scrim.onclick=closeDrawer;
   document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") closeDrawer(); });
+
+  /* ---- Photo tray drawer (right side) ---- */
+  const tray=document.getElementById("tray"), trayScrim=document.getElementById("trayScrim");
+  function openTray(){ tray.classList.add("open"); trayScrim.classList.add("open"); document.body.classList.add("tray-open"); tray.setAttribute("aria-hidden","false"); renderTray(); }
+  function closeTray(){ tray.classList.remove("open"); trayScrim.classList.remove("open"); document.body.classList.remove("tray-open"); tray.setAttribute("aria-hidden","true"); markPlaceTargets(); }
+  trayCloseFn = closeTray;   // let renderTray's dragstart close the drawer so pages become drop targets
+  document.getElementById("photosBtn").onclick=openTray;
+  document.getElementById("trayClose").onclick=closeTray;
+  trayScrim.onclick=closeTray;
+  document.getElementById("trayAddBtn").onclick=()=>{ ensureTrayPicker().click(); };
+
+  /* resize: drag the left-edge handle to set the tray width (session-only). Pointer events = mouse+touch. */
+  (function trayResizeSetup(){
+    const handle=document.getElementById("trayResize"); if(!handle) return;
+    let resizing=false;
+    const minW=280;
+    const maxW=()=>Math.round(window.innerWidth*0.94);
+    const setW=(w)=>{ w=Math.max(minW,Math.min(maxW(),w)); document.documentElement.style.setProperty("--tray-w",w+"px"); };
+    handle.addEventListener("pointerdown",(e)=>{
+      resizing=true; document.body.classList.add("tray-resizing");
+      try{ handle.setPointerCapture(e.pointerId); }catch(_){}
+      e.preventDefault();
+    });
+    handle.addEventListener("pointermove",(e)=>{
+      if(!resizing) return;
+      // tray is docked right; width = distance from the pointer to the right screen edge
+      setW(window.innerWidth - e.clientX);
+    });
+    const end=(e)=>{ if(!resizing) return; resizing=false; document.body.classList.remove("tray-resizing"); try{ handle.releasePointerCapture(e.pointerId); }catch(_){} };
+    handle.addEventListener("pointerup",end);
+    handle.addEventListener("pointercancel",end);
+    // keep within bounds if the window shrinks
+    window.addEventListener("resize",()=>{ const cur=parseInt(getComputedStyle(document.documentElement).getPropertyValue("--tray-w"))||380; setW(cur); });
+  })();
+  // Escape closes the tray but KEEPS any armed photo, so on phones you can close the tray then tap a slot.
+  // A second Escape (tray already closed) disarms the pending placement.
+  document.addEventListener("keydown",(e)=>{ if(e.key!=="Escape") return; if(tray.classList.contains("open")){ closeTray(); } else if(trayPlaceSel){ trayPlaceSel=null; markPlaceTargets(); renderTray(); } });
+  renderTray();
 })();
 /* ---- theme toggle: Honey Bunny <-> Victoria Studio (HK). Purely cosmetic; stored
    separately from zine state so a "Start over" never resets it. ---- */
@@ -2443,9 +2782,9 @@ document.getElementById("tplApply").onclick=async ()=>{
   document.getElementById("tplSetup").open=false;
 };
 
-// click anywhere that isn't a selectable element or the inspector deselects the current box
+// click anywhere that isn't a selectable element, the inspector, or the Give control deselects
 function isSelectableTarget(t){
-  return !!(t.closest && (t.closest(".dwrap") || t.closest(".coverwrap") || t.closest(".slot") || t.closest("#inspector")));
+  return !!(t.closest && (t.closest(".dwrap") || t.closest(".coverwrap") || t.closest(".slot") || t.closest("#inspector") || t.closest(".kofi-wrap")));
 }
 function maybeDeselect(e){ if(selection && !isSelectableTarget(e.target)) clearSelection(); }
 document.addEventListener("mousedown", maybeDeselect);
@@ -2508,40 +2847,53 @@ window.addEventListener("error",function(){
 })();
 
 /* ---------------- Ko-fi "Give" button ----------------
-   One code path (a <button>, so there's no default navigation to double-fire).
-   Web: window.open. Tauri Mac app: open the system browser via the opener plugin's invoke
-   command. A quiet error toast appears only if the open fails (e.g. a permission regression). */
+   Web: window.open. Tauri Mac app: open the system browser via the opener plugin's invoke command.
+   Collapsible into a bottom bookmark tab; the collapsed/expanded choice persists (own key). */
 (function kofi(){
   try{
+    var wrap=document.getElementById("kofiWrap");
     var b=document.getElementById("kofiGive");
-    if(!b) return;
-    b.hidden=false;
+    var closeBtn=document.getElementById("kofiClose");
+    var tab=document.getElementById("kofiTab");
+    if(!wrap||!b) return;
+    wrap.hidden=false;
     var url=b.getAttribute("data-href");
+    var COLLAPSE_KEY="kofi-collapsed";
+
+    // restore collapsed choice
+    try{ if(localStorage.getItem(COLLAPSE_KEY)==="1") wrap.classList.add("collapsed"); }catch(e){}
+    function setCollapsed(on){
+      wrap.classList.toggle("collapsed", on);
+      try{ localStorage.setItem(COLLAPSE_KEY, on?"1":"0"); }catch(e){}
+    }
 
     function inTauri(){ try{ return !!(window.__TAURI__ || window.__TAURI_INTERNALS__); }catch(e){ return false; } }
-
     function getInvoke(){
       var T=window.__TAURI__||{};
       return (T.core&&T.core.invoke)||T.invoke||
              (window.__TAURI_INTERNALS__&&window.__TAURI_INTERNALS__.invoke)||null;
     }
-
-    b.addEventListener("click",function(ev){
-      ev.preventDefault();
+    function openKofi(){
       if(inTauri()){
         var invoke=getInvoke();
         if(invoke){
           try{
             var r=invoke("plugin:opener|open_url",{url:url});
             if(r&&typeof r.catch==="function"){ r.catch(function(err){ try{ toast("Couldn't open the link: "+err); }catch(_){}} ); }
-            return;
-          }catch(e){ try{ toast("Couldn't open the link."); }catch(_){}; return; }
+          }catch(e){ try{ toast("Couldn't open the link."); }catch(_){}; }
         }
         return;
       }
-      // Web
       try{ window.open(url,"_blank","noopener"); }catch(e){}
+    }
+
+    b.addEventListener("click",function(ev){
+      // clicking the × collapses instead of opening the link
+      if(ev.target && ev.target.id==="kofiClose"){ ev.preventDefault(); ev.stopPropagation(); setCollapsed(true); return; }
+      ev.preventDefault(); openKofi();
     });
+    if(closeBtn) closeBtn.addEventListener("click",function(ev){ ev.preventDefault(); ev.stopPropagation(); setCollapsed(true); });
+    if(tab) tab.addEventListener("click",function(ev){ ev.preventDefault(); setCollapsed(false); });
   }catch(e){}
 })();
 
