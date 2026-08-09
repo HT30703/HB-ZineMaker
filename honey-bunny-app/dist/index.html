@@ -177,6 +177,10 @@
     /* .wrap is centred at 1180px; stretch the header to the full window using viewport width */
     .wrap>header.masthead{ width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); }
   }
+  /* Desktop app: transparent native title bar lets the jade masthead run to the very top (unified,
+     continuous look). The native bar still handles dragging; we just add a little top padding so the
+     macOS traffic-light buttons (top-left) sit clear of the hamburger. Web is unaffected. */
+  body.is-tauri .wrap>header.masthead{ padding-top:34px; }
   header.masthead h1{
     margin:0; font-size:clamp(20px,3vw,30px); letter-spacing:-.5px; font-weight:900;
     text-transform:uppercase; font-family:Georgia,"Times New Roman",serif; line-height:1;
@@ -2832,6 +2836,10 @@ window.addEventListener("error",function(){
    Fade the jade/crest splash out ~2s after the window loads, then remove it.
    Runs independently of render so a render hiccup can never leave it stuck;
    a hard fallback also forces it away in case 'load' never fires. */
+/* mark the packaged desktop app so CSS can leave a little room for the macOS traffic-light buttons
+   that float over the transparent title bar. The native title bar still handles window dragging. */
+(function markTauri(){ try{ if(window.__TAURI__ || window.__TAURI_INTERNALS__) document.body.classList.add("is-tauri"); }catch(e){} })();
+
 (function splash(){
   var el=document.getElementById("splash");
   if(!el) return;
