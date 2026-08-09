@@ -3,9 +3,7 @@
   "productName": "Harbour & Bay",
   "version": "1.0.0",
   "identifier": "com.honeybunny.zinemaker",
-  "build": {
-    "frontendDist": "../dist"
-  },
+  "build": { "frontendDist": "../dist" },
   "app": {
     "withGlobalTauri": true,
     "windows": [
@@ -20,20 +18,16 @@
         "fullscreen": false,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
-        "backgroundColor": "#123328"
+        "backgroundColor": "#123328",
+        "dragDropEnabled": false
       }
     ],
-    "security": {
-      "csp": null
-    }
+    "security": { "csp": null }
   },
   "bundle": {
     "active": true,
     "targets": ["dmg", "app"],
-    "icon": [
-      "icons/icon.icns",
-      "icons/icon.png"
-    ],
+    "icon": ["icons/icon.icns", "icons/icon.png"],
     "category": "GraphicsAndDesign",
     "shortDescription": "A little offline zine maker.",
     "longDescription": "Harbour & Bay — one sheet, one cut, a whole book. An offline photo-zine maker."
