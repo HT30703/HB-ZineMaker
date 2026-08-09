@@ -16,6 +16,7 @@
         "minHeight": 560,
         "resizable": true,
         "fullscreen": false,
+        "titleBarStyle": "Transparent",
         "backgroundColor": "#123328"
       }
     ],
