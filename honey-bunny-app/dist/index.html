@@ -177,19 +177,6 @@
     /* .wrap is centred at 1180px; stretch the header to the full window using viewport width */
     .wrap>header.masthead{ width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); }
   }
-  /* Desktop app (Overlay title bar): the jade masthead runs under the transparent title bar, so add
-     top padding to push the hamburger/logo BELOW the title-bar strip; dragging is handled by #dragbar. */
-  body.is-tauri .wrap>header.masthead{ padding-top:34px; }
-  /* invisible drag strip over the title-bar zone (top 30px). macOS draws the traffic lights on top
-     of it natively, so they stay clickable; our controls sit below it. Packaged app only. */
-  #dragbar{ display:none; }
-  body.is-tauri #dragbar{
-    display:block; position:fixed; top:0; left:0; right:0; height:30px; z-index:70;
-    -webkit-app-region:drag;
-  }
-  /* masthead controls sit below the strip and must never be draggable */
-  body.is-tauri header.masthead button,
-  body.is-tauri header.masthead .theme-toggle{ -webkit-app-region:no-drag; }
   header.masthead h1{
     margin:0; font-size:clamp(20px,3vw,30px); letter-spacing:-.5px; font-weight:900;
     text-transform:uppercase; font-family:Georgia,"Times New Roman",serif; line-height:1;
@@ -545,10 +532,6 @@
 </style>
 </head>
 <body data-theme="hk">
-<!-- Desktop drag strip: a fixed, invisible bar across the very top so the window can be moved by
-     dragging the jade header (the native Overlay title bar has no draggable region of its own).
-     Only active in the packaged app (body.is-tauri); inert and invisible on the web. -->
-<div id="dragbar" aria-hidden="true"></div>
 
 <!-- Splash: jade screen with the crest, fades out ~2s after load. Self-dismisses on a timer AND
      a hard fallback so it can never get stuck covering the editor. -->
@@ -2849,10 +2832,6 @@ window.addEventListener("error",function(){
    Fade the jade/crest splash out ~2s after the window loads, then remove it.
    Runs independently of render so a render hiccup can never leave it stuck;
    a hard fallback also forces it away in case 'load' never fires. */
-/* mark the packaged desktop app so CSS can leave room for the macOS traffic-light buttons that
-   float over the (Overlay) title bar. On the web there are no traffic lights, so no offset. */
-(function markTauri(){ try{ if(window.__TAURI__ || window.__TAURI_INTERNALS__) document.body.classList.add("is-tauri"); }catch(e){} })();
-
 (function splash(){
   var el=document.getElementById("splash");
   if(!el) return;
