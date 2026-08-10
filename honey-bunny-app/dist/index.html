@@ -2373,7 +2373,7 @@ const QR=(function(){
       var ctx=canvas.getContext("2d");var size=canvas.width>0?canvas.width:74;canvas.width=size;canvas.height=size;ctx.clearRect(0,0,size,size);
       if(!text){ctx.fillStyle="#f2f2f2";ctx.fillRect(0,0,size,size);ctx.fillStyle="#aaa";ctx.font="9px monospace";ctx.textAlign="center";ctx.fillText("add link",size/2,size/2);return;}
       var m=pick(text);if(!m){ctx.fillStyle="#000";ctx.font="8px monospace";ctx.fillText("QR err",4,12);return;}
-      var count=m.getModuleCount();var quiet=4;var cell=Math.floor(size/(count+quiet*2));if(cell<1)cell=1;var used=cell*count;var pad=Math.floor((size-used)/2);
+      var count=m.getModuleCount();var quiet=2;var cell=Math.floor(size/(count+quiet*2));if(cell<1)cell=1;var used=cell*count;var pad=Math.floor((size-used)/2);
       ctx.fillStyle="#fff";ctx.fillRect(0,0,size,size);ctx.fillStyle="#000";
       for(var r=0;r<count;r++)for(var c=0;c<count;c++)if(m.isDark(r,c))ctx.fillRect(pad+c*cell,pad+r*cell,cell,cell);
     },
