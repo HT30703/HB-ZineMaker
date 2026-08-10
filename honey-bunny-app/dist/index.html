@@ -417,7 +417,9 @@
   .placeholder .ph-opt{line-height:1.1;}
   .placeholder .ph-div{width:1px;height:12px;background:currentColor;opacity:.45;}
   /* centered "tap or drop photo" prompt on an empty cover/back (taps pass through to the wrap) */
-  .coverwrap .cover-ph{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:0;}
+  /* cover placeholder: center it the SAME way the interior slot does (normal flow, centered by the
+     slot's flex) rather than absolute positioning, so it sits dead-centre exactly like interiors. */
+  .coverwrap .cover-ph{pointer-events:none;z-index:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;}
   .slot input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
   .img-ctrls{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:flex;gap:3px;z-index:4;opacity:0;transition:opacity .12s;}
   .slot.has-img:hover .img-ctrls{opacity:1;}
