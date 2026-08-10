@@ -1036,7 +1036,14 @@ function sizeGroup(pos){
 }
 function qrGroup(t){
   const inp=document.createElement("input"); inp.type="text"; inp.placeholder="https://your-link.com (encoded, not printed)"; inp.value=t.url||"";
-  inp.oninput=()=>{ t.url=inp.value; save(); renderEditor(); };
+  // Update + save on each keystroke, and refresh ONLY the live QR canvas in place — do NOT call
+  // renderEditor() here, or it rebuilds this input every keystroke and focus is lost after one char
+  // (the "can only type one letter" bug). Full re-render happens on blur/Enter (change).
+  inp.oninput=()=>{
+    t.url=inp.value; save();
+    try{ const qc=document.querySelector(".dwrap.qr canvas"); if(qc) QR.render(qc, t.url||""); }catch(e){}
+  };
+  inp.onchange=()=>{ renderEditor(); };
   return grp("QR link",inp);
 }
 function photoGroup(t){
