@@ -6,11 +6,13 @@
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
-    {
-      "identifier": "opener:allow-open-url",
-      "allow": [
-        { "url": "https://ko-fi.com/*" }
-      ]
-    }
+    { "identifier": "opener:allow-open-url", "allow": [ { "url": "https://ko-fi.com/*" } ] },
+    "fs:allow-mkdir",
+    "fs:allow-read-dir",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-remove",
+    "fs:allow-exists",
+    { "identifier": "fs:scope", "allow": [ { "path": "$APPDATA/zines" }, { "path": "$APPDATA/zines/*" } ] }
   ]
 }
