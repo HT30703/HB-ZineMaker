@@ -237,6 +237,8 @@
   .tray-body{padding:16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;overscroll-behavior:contain;flex:1 1 auto;padding-bottom:calc(24px + env(safe-area-inset-bottom));}
   .tray-add{font-family:inherit;font-size:13px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;padding:12px;border:2px dashed var(--ink);background:var(--paper2);color:var(--ink);cursor:pointer;border-radius:6px;flex:0 0 auto;}
   .tray-add:hover{background:var(--paper);}
+  .tray-clear{font-family:inherit;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;border-radius:6px;flex:0 0 auto;}
+  .tray-clear:hover{background:var(--accent);color:#fff;}
   .tray-hint{font-size:11px;line-height:1.5;color:var(--ink);opacity:.6;margin:0;}
   .tray-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
   .tray-cell{position:relative;border:2px solid var(--ink);border-radius:6px;overflow:hidden;background:var(--paper2);cursor:grab;box-shadow:2px 2px 0 var(--shadow);}
@@ -296,6 +298,19 @@
   .tpl-chip .tc-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .tpl-chip .tc-del{flex:0 0 auto;width:22px;height:22px;line-height:20px;text-align:center;padding:0;font-size:14px;border:1.5px solid var(--ink);background:var(--paper);color:var(--ink);cursor:pointer;border-radius:3px;}
   .tpl-chip .tc-del:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
+  /* saved-zine library list (in the drawer): each row = open (name) + delete */
+  .zine-lib{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+  .zine-lib:empty{display:none;}
+  /* the in-app zine LIBRARY (save/reopen to disk) is a desktop-app feature only; hide it on the web,
+     where "Save Zine (HTML)" is the durable option instead. */
+  #zineLibSec{display:none;}
+  body.is-tauri #zineLibSec{display:flex;}
+  .zine-row{display:flex;align-items:center;gap:8px;justify-content:space-between;border:1.5px solid var(--ink);background:var(--paper);padding:6px 8px 6px 10px;font-size:12px;}
+  .zine-row .zr-open{flex:1 1 auto;text-align:left;background:none;border:none;font:inherit;color:var(--ink);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 0;}
+  .zine-row .zr-open:hover{color:var(--accent);}
+  .zine-row .zr-meta{flex:0 0 auto;font-size:10px;opacity:.5;}
+  .zine-row .zr-del{flex:0 0 auto;width:22px;height:22px;line-height:20px;text-align:center;padding:0;font-size:14px;border:1.5px solid var(--ink);background:var(--paper);color:var(--ink);cursor:pointer;border-radius:3px;}
+  .zine-row .zr-del:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
   .btn-primary{background:var(--accent)!important;color:#fff!important;font-weight:bold;text-transform:uppercase;letter-spacing:1px;}
   .btn-primary:hover{background:#c8392f!important;}
   .btn-ghost:hover{background:var(--paper2)!important;}
@@ -684,6 +699,14 @@
         </div>
       </details>
 
+      <div class="drawer-sec" id="zineLibSec">
+        <div class="drawer-sec-hd">My zines</div>
+        <div class="drawer-btns">
+          <button class="btn-ghost" id="saveZineLibBtn">＋ Save this zine</button>
+        </div>
+        <div id="zineLibList" class="zine-lib"></div>
+      </div>
+
       <div class="drawer-sec">
         <div class="drawer-sec-hd">Save &amp; export</div>
         <div class="drawer-btns">
@@ -707,6 +730,7 @@
     </div>
     <div class="tray-body">
       <button type="button" class="tray-add" id="trayAddBtn">＋ Add photos to tray</button>
+      <button type="button" class="tray-clear" id="trayClearBtn" hidden>Clear all photos</button>
       <p class="tray-hint" id="trayHint">A holding area you can reuse. Drag a photo onto a page — or tap a photo, then tap a slot. Photos stay here until you reload.</p>
       <div class="tray-grid" id="trayGrid"></div>
     </div>
@@ -899,6 +923,81 @@ function load(){
     if(s && typeof s==="object"){ return s; }
   }catch(e){}
   return null;
+}
+
+/* ---- In-app zine library (DESKTOP APP ONLY): save/reopen named zines as real files on disk ----
+   Uses the Tauri fs plugin, scoped to $APPDATA/zines. Effectively unlimited (real disk), unlike the
+   ~5MB localStorage cap. Hidden on the web, where "Save Zine (HTML)" is the durable option. */
+const ZINE_DIR="zines";
+function fsApi(){ try{ var T=window.__TAURI__; return (T&&T.fs)?T.fs:null; }catch(e){ return null; } }
+function fsBaseAppData(){ try{ return window.__TAURI__.fs.BaseDirectory.AppData; }catch(e){ return undefined; } }
+async function libEnsureDir(){
+  const fs=fsApi(); if(!fs) return;
+  try{ const has=await fs.exists(ZINE_DIR,{baseDir:fsBaseAppData()}); if(!has) await fs.mkdir(ZINE_DIR,{baseDir:fsBaseAppData(),recursive:true}); }catch(e){ console.error("mkdir",e); }
+}
+function zineSnapshot(){
+  return {
+    format:state.format, paper:state.paper,
+    pages:state.pages, cover:state.cover, back:state.back,
+    savedTemplates:state.savedTemplates,
+    cropMarks:state.cropMarks, duplexX:state.duplexX, duplexY:state.duplexY,
+    duplexRot:state.duplexRot, duplexScale:state.duplexScale
+  };
+}
+function safeFileName(name){ return (name||"zine").replace(/[^a-z0-9\-_ ]/gi,"_").slice(0,60).trim()||"zine"; }
+async function saveZineToLibrary(){
+  const fs=fsApi(); if(!fs){ toast("Saving to the app library is a desktop-app feature."); return; }
+  const name=((await askPrompt("Name this zine (saved in the app so you can reopen it):","My zine"))||"").trim();
+  if(!name) return;
+  await libEnsureDir();
+  const rec={ name:name, ts:Date.now(), state:zineSnapshot() };
+  const file=ZINE_DIR+"/"+safeFileName(name)+".json";
+  try{
+    await fs.writeTextFile(file, JSON.stringify(rec), {baseDir:fsBaseAppData()});
+    renderZineLibrary(); toast("Saved “"+name+"”");
+  }catch(e){ console.error("save zine",e); await askConfirm("Couldn't save the zine to disk. You can still use “Save Zine (HTML)” to export it.","OK"); }
+}
+async function listZineFiles(){
+  const fs=fsApi(); if(!fs) return [];
+  await libEnsureDir();
+  try{
+    const entries=await fs.readDir(ZINE_DIR,{baseDir:fsBaseAppData()});
+    const files=(entries||[]).filter(e=>e && e.name && /\.json$/i.test(e.name));
+    const out=[];
+    for(const f of files){
+      try{ const txt=await fs.readTextFile(ZINE_DIR+"/"+f.name,{baseDir:fsBaseAppData()}); const rec=JSON.parse(txt); out.push({file:f.name, name:rec.name||f.name.replace(/\.json$/i,""), ts:rec.ts||0, state:rec.state}); }catch(_){}
+    }
+    return out.sort((a,b)=>b.ts-a.ts);
+  }catch(e){ console.error("readDir",e); return []; }
+}
+async function openZineFromLibrary(file){
+  const fs=fsApi(); if(!fs) return;
+  let rec; try{ rec=JSON.parse(await fs.readTextFile(ZINE_DIR+"/"+file,{baseDir:fsBaseAppData()})); }catch(e){ toast("Couldn't read that zine"); return; }
+  if(!(await askConfirm("Open “"+(rec.name||file)+"”? This replaces the zine you're currently editing.","Open"))) return;
+  try{ hydrate(rec.state); }catch(e){ console.error("open",e); toast("Couldn't open that zine"); return; }
+  currentSpread=0; clearSelection(); ensurePages(); rebuildFormatDropdown(); renderEditor(); save();
+  try{ document.getElementById("drawerClose").click(); }catch(_){}
+  toast("Opened “"+(rec.name||file)+"”");
+}
+async function deleteZineFromLibrary(file, label){
+  const fs=fsApi(); if(!fs) return;
+  if(!(await askConfirm("Delete the saved zine “"+(label||file)+"”? This can't be undone.","Delete"))) return;
+  try{ await fs.remove(ZINE_DIR+"/"+file,{baseDir:fsBaseAppData()}); }catch(e){ console.error("remove",e); }
+  renderZineLibrary(); toast("Deleted");
+}
+async function renderZineLibrary(){
+  const box=document.getElementById("zineLibList"); if(!box) return;
+  if(!fsApi()){ box.innerHTML=""; return; }   // web: nothing to list
+  const list=await listZineFiles();
+  box.innerHTML="";
+  list.forEach(z=>{
+    const row=document.createElement("div"); row.className="zine-row";
+    const open=document.createElement("button"); open.className="zr-open"; open.textContent=z.name; open.title="Open “"+z.name+"”";
+    open.onclick=()=>openZineFromLibrary(z.file);
+    const del=document.createElement("button"); del.className="zr-del"; del.textContent="×"; del.title="Delete";
+    del.onclick=(e)=>{ e.stopPropagation(); deleteZineFromLibrary(z.file, z.name); };
+    row.appendChild(open); row.appendChild(del); box.appendChild(row);
+  });
 }
 
 /* merge loaded state defensively onto defaults */
@@ -1261,6 +1360,7 @@ function renderTray(){
   grid.innerHTML="";
   const cnt=document.getElementById("photosCount");
   if(cnt){ cnt.textContent=photoTray.length; cnt.hidden=photoTray.length===0; }
+  const clr=document.getElementById("trayClearBtn"); if(clr) clr.hidden=photoTray.length===0;
   if(!photoTray.length){ const em=document.createElement("div"); em.className="tray-empty"; em.textContent="No photos yet. Tap “＋ Add photos to tray”."; grid.appendChild(em); return; }
   photoTray.forEach((it)=>{
     const cell=document.createElement("div"); cell.className="tray-cell"+(trayPlaceSel===it.id?" sel":""); cell.setAttribute("draggable","true"); cell.dataset.id=it.id;
@@ -2514,6 +2614,11 @@ document.addEventListener("keydown",(e)=>{
   document.getElementById("trayClose").onclick=closeTray;
   trayScrim.onclick=closeTray;
   document.getElementById("trayAddBtn").onclick=()=>{ ensureTrayPicker().click(); };
+  document.getElementById("trayClearBtn").onclick=async ()=>{
+    if(!photoTray.length) return;
+    if(!(await askConfirm("Remove all "+photoTray.length+" photos from the tray? (Photos already placed on pages stay.)","Clear tray"))) return;
+    photoTray=[]; trayPlaceSel=null; markPlaceTargets(); renderTray(); toast("Tray cleared");
+  };
 
   /* resize: drag the left-edge handle to set the tray width (session-only). Pointer events = mouse+touch. */
   (function trayResizeSetup(){
@@ -2593,6 +2698,8 @@ document.getElementById("deflayout").onchange=(e)=>{
   toast(changed?("Blank pages set to "+(v==="split"?"2 horizontal":"1 portrait")):"No blank pages to change");
 };
 document.getElementById("clearAll").onclick=async ()=>{ if(!(await askConfirm("Clear photos & text? (Your saved templates are kept.)","Start over"))) return; state.pages=[]; state.cover=freshCover(); state.back=freshBack(); state.format="8"; currentSpread=0; clearSelection(); ensurePages(); rebuildFormatDropdown(); renderEditor(); save(); toast("Cleared"); };
+document.getElementById("saveZineLibBtn").onclick=()=>saveZineToLibrary();
+try{ renderZineLibrary(); }catch(_){}
 document.getElementById("pdfBtn").onclick=()=>exportPrintPDF();
 document.getElementById("viewBtn").onclick=()=>openZineViewer();
 document.getElementById("zvClose").onclick=()=>closeZineViewer();
