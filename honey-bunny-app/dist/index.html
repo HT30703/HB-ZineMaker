@@ -211,11 +211,31 @@
   .drawer-scrim{position:fixed;inset:0;background:rgba(26,22,20,.45);opacity:0;visibility:hidden;transition:opacity .2s;z-index:60;}
   .drawer-scrim.open{opacity:1;visibility:visible;}
 
-  /* editor-bar Photos button */
-  .photos-btn{font-family:inherit;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;padding:8px 14px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);cursor:pointer;border-radius:999px;display:inline-flex;align-items:center;gap:7px;box-shadow:2px 2px 0 var(--shadow);}
+  /* editor-bar buttons — Photo Tray + White border are a matched pair. Shared min-width makes them equal;
+     the label flexes to fill the space between icon and trailing slot, so the trailing switch/badge can NEVER
+     overlap the text (the label shrinks instead). */
+  .photos-btn{font-family:inherit;font-size:12px;font-weight:bold;letter-spacing:.5px;text-transform:uppercase;padding:8px 13px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);cursor:pointer;border-radius:999px;display:inline-flex;align-items:center;gap:8px;box-shadow:2px 2px 0 var(--shadow);flex:0 0 auto;box-sizing:border-box;white-space:nowrap;min-width:150px;}
+  .photos-btn .btn-label{flex:1 1 auto;text-align:left;}
+  .photos-btn .btn-trail{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:flex-end;}
   .photos-btn:hover{background:var(--paper2);}
   .photos-btn:active{transform:translateY(1px);}
   body[data-theme="hk"] .photos-btn{border-radius:6px;}
+  /* White border logo (the one you liked): a framed square whose solid fill insets into a white border when
+     the toggle is ON — previewing the effect — plus a compact on/off switch pinned to the right edge. */
+  .wb-ico{width:15px;height:15px;flex:0 0 auto;border:2px solid currentColor;border-radius:3px;display:inline-flex;box-sizing:border-box;}
+  .wb-ico-inner{width:100%;height:100%;background:currentColor;border-radius:1px;transition:margin .18s ease;}
+  .wb-btn[aria-pressed="true"] .wb-ico-inner{margin:2.5px;}
+  .wb-switch{width:24px;height:13px;flex:0 0 auto;border-radius:999px;background:var(--line);position:relative;transition:background .16s ease;margin-left:auto;}
+  .wb-knob{position:absolute;top:1.5px;left:1.5px;width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .16s ease;}
+  .wb-btn[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .wb-btn[aria-pressed="true"] .wb-switch{background:var(--accent);}
+  .wb-btn[aria-pressed="true"] .wb-knob{left:12.5px;}
+  body[data-theme="hk"] .wb-btn[aria-pressed="true"] .wb-switch{background:var(--accent2,#c9a24b);}
+  /* Photo Tray logo: a photo card sitting in a shallow tray; on hover the photo LIFTS UP out of the tray
+     (and pops when new photos are filed). The tray stays put; only the card moves. */
+  .tray-ico{width:16px;height:16px;flex:0 0 auto;display:block;overflow:visible;}
+  .tray-ico .ti-photo{transform-box:fill-box;transform-origin:center bottom;transition:transform .22s cubic-bezier(.34,1.4,.5,1);}
+  .photos-btn:hover .tray-ico .ti-photo,.photos-btn.pop .tray-ico .ti-photo{transform:translateY(-3.5px);}
   .photos-count{background:var(--accent);color:#fff;border-radius:999px;font-size:10px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 4px;}
 
   /* photo tray drawer (right side) — must sit ABOVE the fixed inspector (z-index:80) and the
@@ -243,6 +263,11 @@
   .tray-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
   .tray-cell{position:relative;border:2px solid var(--ink);border-radius:6px;overflow:hidden;background:var(--paper2);cursor:grab;box-shadow:2px 2px 0 var(--shadow);}
   .tray-cell.sel{outline:3px solid var(--accent);outline-offset:1px;}
+  /* photos already placed somewhere in the zine are dimmed as a "used" cue, but stay fully draggable/tappable
+     so the user can still reuse them. A small "USED" badge marks them; selecting/hovering restores clarity. */
+  .tray-cell.used img{opacity:.38;filter:grayscale(100%);transition:opacity .15s,filter .15s;}
+  .tray-cell.used:hover img,.tray-cell.used.sel img{opacity:.85;filter:grayscale(0%);}
+  .tray-cell .tray-used{position:absolute;top:3px;left:3px;background:rgba(26,22,20,.72);color:#fff;font-size:8px;font-weight:bold;letter-spacing:.8px;padding:2px 5px;border-radius:3px;text-transform:uppercase;pointer-events:none;}
   .tray-cell img{display:block;width:100%;height:96px;object-fit:cover;pointer-events:none;-webkit-user-drag:none;}
   .tray-cell .tray-name{font-size:10px;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--paper);border-top:1px solid var(--line);}
   .tray-cell .tray-del{position:absolute;top:3px;right:3px;width:20px;height:20px;border:none;border-radius:50%;background:rgba(26,22,20,.72);color:#fff;font-size:14px;line-height:20px;text-align:center;cursor:pointer;padding:0;}
@@ -348,14 +373,18 @@
   .nudge-readout{font-size:12px;font-family:"Courier New",monospace;padding:8px 10px;border:2px solid var(--ink);background:var(--paper);white-space:nowrap;}
   .tpl-note.warn{color:var(--accent);}
 
-  /* editor — top zoom bar, top spread chooser strip, then full-width pages */
-  .editor-bar{position:relative;margin-top:22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px 14px;border:2px solid var(--ink);background:var(--paper2);box-shadow:4px 4px 0 var(--shadow);}
-  .zoom-ctl{display:flex;align-items:center;gap:8px;}
+  /* editor — top zoom bar, top spread chooser strip, then full-width pages.
+     Grouped layout: a tight tools cluster (undo · tray · border), then the Size control, then How-it-works
+     pushed to the far right. Thin dividers separate clusters so the bar reads as distinct groups, not a
+     flat busy row. */
+  .editor-bar{position:relative;margin-top:22px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:11px 18px;border:2px solid var(--ink);background:var(--paper2);box-shadow:4px 4px 0 var(--shadow);}
+  .bar-group{display:flex;align-items:center;gap:11px;padding-right:22px;border-right:1px solid var(--line);}
+  .zoom-ctl{display:flex;align-items:center;gap:9px;}
   .zoom-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:bold;opacity:.7;}
-  .zoom-ctl input[type=range]{width:150px;accent-color:var(--accent);cursor:pointer;}
+  .zoom-ctl input[type=range]{width:130px;accent-color:var(--accent);cursor:pointer;}
   .zoom-step{width:22px;height:22px;line-height:20px;text-align:center;padding:0;font-size:14px;border:1px solid var(--line);background:var(--paper);cursor:pointer;font-family:inherit;color:var(--ink);}
   .zoom-step:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
-  .undo-group{display:flex;gap:5px;padding-right:12px;margin-right:2px;border-right:1px solid var(--line);}
+  .undo-group{display:flex;gap:5px;padding-right:11px;border-right:1px solid var(--line);}
   .undo-btn{width:26px;height:26px;line-height:24px;font-size:15px;font-weight:bold;}
   .undo-btn:disabled{opacity:.3;cursor:default;background:var(--paper);color:var(--ink);border-color:var(--line);}
   .zoom-val{font-size:11px;font-weight:bold;min-width:40px;text-align:right;}
@@ -395,6 +424,38 @@
   /* pages get the FULL editor width now, so a pair stays side-by-side even when enlarged */
   .spread-view{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:40px;width:100%;max-width:calc(820px * var(--edit-zoom,1));margin:0 auto;padding:4px 0 20px;justify-items:center;align-content:center;}
   .spread-view.single{grid-template-columns:minmax(0,1fr);max-width:calc(420px * var(--edit-zoom,1));}
+  /* a 2-page landscape spread = ONE merged wide card as wide as TWO pages side by side, holding ONE continuous
+     photo (single <img>, no seam gap). It behaves as one big card but is double-page width. */
+  .spread-view.spread-pair{grid-template-columns:minmax(0,1fr);max-width:calc(760px * var(--edit-zoom,1));}
+  .spread-view.spread-pair .spread-card{max-width:calc(760px * var(--edit-zoom,1));width:100%;}
+  .spread-canvas{width:100%;aspect-ratio:var(--spread-ar,1.294);position:relative;overflow:hidden;background:#fff;}
+  /* Spread slot MUST be absolute-fill. Use .slot.spread-slot (specificity 0,2,0) so it beats the generic
+     .slot{position:relative;flex:1} rule that comes later in the file — otherwise the empty slot collapses to
+     text height and the cream drop zone never shows. */
+  .slot.spread-slot{position:absolute;inset:0;overflow:hidden;display:flex;align-items:center;justify-content:center;text-align:center;background:#fff;flex:none;}
+  /* empty spread = ONE big landscape cream drop zone that sits BEHIND the white-border frame (default z-index),
+     so when white border is on you still see the 4.5mm white frame around the cream, matching a filled spread.
+     Label inherits the SAME font/size/colour/uppercase as every other page's placeholder — only positioned to
+     fill the wide slot; don't override font-size, letter-spacing, or colour so it reads identically. */
+  .slot.spread-slot:not(.has-img){background:#fbfaf7;}
+  .slot.spread-slot:not(.has-img) .placeholder{position:absolute;inset:0;background:#fbfaf7;}
+  /* spread photo ALWAYS fills the whole slot (cover) — no cream/empty edges. (Fit is disabled for spreads.)
+     The slot bg is white (not cream) so any sub-pixel rounding at an edge reads as white border, never cream. */
+  .slot.spread-slot img.photo{width:100%;height:100%;object-fit:cover !important;display:block;transform-origin:center center;cursor:grab;touch-action:none;}
+  .spread-slot.panning img.photo{cursor:grabbing;}
+  .spread-slot.drag{background:#fbe7e4;}
+  /* faint fold line at the centre (on top of the continuous photo, does NOT cut it) */
+  .spread-seam{position:absolute;top:0;bottom:0;left:50%;width:0;border-left:1px solid rgba(0,0,0,.13);pointer-events:none;z-index:3;}
+  /* white border on a spread: an EVEN proportional white frame on the OUTER edges only, drawn as four inset
+     white bars (widths/heights in %, which is valid CSS) so it matches the per-page border and the preview.
+     Nothing crosses the middle — the photo is continuous. Left/right = --wb-pad (% of width, but the card is
+     2 pages wide so we double it via --wb-pad-sp); top/bottom = --wb-gap (% of height). */
+  .spread-frame{position:absolute;inset:0;pointer-events:none;z-index:2;display:none;}
+  body.white-border .spread-frame{display:block;}
+  body.white-border .spread-frame::before,body.white-border .spread-frame::after{content:"";position:absolute;left:0;right:0;height:var(--wb-gap,5%);background:#fff;}
+  body.white-border .spread-frame::before{top:0;} body.white-border .spread-frame::after{bottom:0;}
+  body.white-border .spread-frame > .wb-l,body.white-border .spread-frame > .wb-r{position:absolute;top:0;bottom:0;width:var(--wb-pad-sp,3%);background:#fff;}
+  body.white-border .spread-frame > .wb-l{left:0;} body.white-border .spread-frame > .wb-r{right:0;}
   .page{width:100%;max-width:calc(380px * var(--edit-zoom,1));background:var(--paper);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--shadow);display:flex;flex-direction:column;position:relative;}
   .page .phead{display:flex;align-items:center;gap:6px;justify-content:space-between;height:28px;padding:0 8px;border-bottom:1px dashed var(--line);font-size:10px;letter-spacing:1px;text-transform:uppercase;box-sizing:border-box;}
   .page .phead .role{font-weight:bold;color:var(--accent2);margin-right:auto;}
@@ -405,7 +466,20 @@
   .pmv:hover:not(:disabled){background:var(--accent);color:#fff;border-color:var(--accent);}
   .pmv:disabled{opacity:.28;cursor:default;}
   .canvas{width:100%;aspect-ratio:var(--panel-ar,0.647);position:relative;overflow:hidden;background:#fff;display:flex;flex-direction:column;container-type:size;}
+  /* spread canvas must keep its WIDE (two-page) aspect — override the generic .canvas rule that would
+     otherwise force the portrait single-page aspect (it's defined later, so we re-assert here specifically). */
+  .canvas.spread-canvas{aspect-ratio:var(--spread-ar,1.294) !important;display:block;container-type:normal;background:#fff;}
   .canvas.split{padding:16px;gap:16px;}
+  /* white-border fold mode: PAD the canvas by the frame width so the photo box (the .slot / .coverwrap that
+     fills it) shrinks to the inner window — this is what lets the photo PAN freely within the visible frame.
+     Use a plain PERCENTAGE padding: CSS padding percentages are ALWAYS resolved against the containing block's
+     WIDTH, so the same --wb-pad on all four sides yields equal pixels = a true even physical margin, and it
+     avoids the cqw self-reference trap on this container-defining element (which was inflating the margin in
+     the editor vs the 300 DPI print). --wb-pad = 7mm / cellWidth as a %, set from JS per paper/template. */
+  body.white-border .canvas{padding:var(--wb-pad,10%);}
+  body.white-border .canvas.split{padding:var(--wb-pad,10%);gap:var(--wb-gap,7%);}
+  /* the spread frames itself via .spread-frame overlay — don't ALSO pad the canvas (that double-margined it) */
+  body.white-border .canvas.spread-canvas{padding:0;}
   .slot{flex:1;position:relative;overflow:hidden;background:#fbfaf7;display:flex;align-items:center;justify-content:center;text-align:center;border:1px dashed transparent;}
   .canvas.split .slot + .slot{border-top:none;}
   .slot.drag{background:#fbe7e4;border-color:var(--accent);}
@@ -452,7 +526,7 @@
   /* wrap like the printed output (max ~92% panel width, same line-height) so the editor preview matches */
   textarea.field{resize:none;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;overflow:hidden;font-weight:900;font-size:4cqh;line-height:1.05;text-transform:uppercase;max-width:84cqw;}
   textarea.field:focus,input.field:focus{outline:1px dashed var(--accent2);}
-  input.field.name{font-weight:bold;font-size:3cqh;max-width:84cqw;}
+  textarea.field.name, input.field.name{font-weight:bold;font-size:3cqh;max-width:84cqw;}
   .dwrap.qr{width:17.6cqh;height:17.6cqh;background:#fff;border:1px solid var(--ink);}
   .dwrap.qr canvas{width:100%;height:100%;display:block;pointer-events:none;}
 
@@ -567,6 +641,11 @@
 <div id="splash" aria-hidden="true">
   <img id="splashLogo" src="brand-icon.png" alt="Harbour & Bay">
 </div>
+<script>
+  /* Fail-safe splash dismiss in its OWN script tag: if the main app script ever fails to parse, this
+     still runs so the splash can't trap the user on the loading screen. */
+  (function(){ setTimeout(function(){ var s=document.getElementById("splash"); if(s){ s.classList.add("hide"); setTimeout(function(){ s.classList.add("gone"); },600); } }, 2000); })();
+</script>
 <div class="wrap">
   <header class="masthead" data-tauri-drag-region>
     <button type="button" class="ham" id="menuBtn" aria-label="Open menu" title="Menu &amp; settings"><span></span><span></span><span></span></button>
@@ -649,6 +728,9 @@
           <div class="tpl-controls">
             <div class="ctl"><label>Crop marks</label>
               <select id="cropMarks"><option value="off">Off</option><option value="on">On</option></select>
+            </div>
+            <div class="ctl"><label>White border (fold, no cut)</label>
+              <select id="whiteBorder"><option value="off">Off</option><option value="on">On</option></select>
             </div>
             <div class="ctl">
               <label>Nudge front cover</label>
@@ -739,17 +821,21 @@
   </aside>
 
   <div class="editor-bar">
-    <div class="undo-group">
-      <button type="button" class="zoom-step undo-btn" id="undoBtn" title="Undo (⌘Z)" disabled>&#8630;</button>
-      <button type="button" class="zoom-step undo-btn" id="redoBtn" title="Redo (⌘⇧Z)" disabled>&#8631;</button>
+    <div class="bar-group">
+      <div class="undo-group">
+        <button type="button" class="zoom-step undo-btn" id="undoBtn" title="Undo (⌘Z)" disabled>&#8630;</button>
+        <button type="button" class="zoom-step undo-btn" id="redoBtn" title="Redo (⌘⇧Z)" disabled>&#8631;</button>
+      </div>
+      <button type="button" class="photos-btn" id="photosBtn" title="Open the photo tray — a reusable holding area for your images"><svg class="tray-ico" viewBox="0 0 16 16" fill="none" aria-hidden="true"><g class="ti-photo"><rect x="3.25" y="1.5" width="9.5" height="9" rx="1.5" fill="var(--paper)" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="4.5" r="1" fill="currentColor"/><path d="M4 9l2.4-2.6 1.6 1.7 1.8-2 2.2 2.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></g><path d="M1.5 11.5v1.5a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="btn-label">Photo Tray</span><span class="btn-trail"><span class="photos-count" id="photosCount" hidden>0</span></span></button>
+      <button type="button" class="photos-btn wb-btn" id="whiteBorderBtn" aria-pressed="false" title="White border: frames every photo with a clean white margin so the folded zine has even gutters — no cutting. Fold guides replace crop marks.">
+        <span class="wb-ico" aria-hidden="true"><span class="wb-ico-inner"></span></span>
+        <span class="btn-label">White border</span>
+        <span class="btn-trail"><span class="wb-switch" aria-hidden="true"><span class="wb-knob"></span></span></span>
+      </button>
     </div>
-    <button type="button" class="photos-btn" id="photosBtn" title="Open the photo tray — a reusable holding area for your images">&#128247; Photo Tray <span class="photos-count" id="photosCount" hidden>0</span></button>
-    <label class="zoom-ctl">
-      <span class="zoom-lbl">Editor size</span>
-      <button type="button" class="zoom-step" id="zoomMinus" title="Smaller">&minus;</button>
+    <label class="zoom-ctl" title="Editor preview size (view only — does not affect print)">
+      <span class="zoom-lbl">Size</span>
       <input type="range" id="editZoom" min="0.7" max="1.4" step="0.05" value="1">
-      <button type="button" class="zoom-step" id="zoomPlus" title="Larger">+</button>
-      <span class="zoom-val" id="editZoomVal">100%</span>
     </label>
     <details class="nav-help" id="navHelp">
       <summary>How it works <span class="tpl-caret">&#9656;</span></summary>
@@ -846,6 +932,8 @@ let state = {
   cover:freshCover(), back:freshBack(),
   savedTemplates:[],  // [{id,name,book,sheets:[{cols,rows,panels}]}]
   cropMarks:true,    // print registration + trim crop marks (on by default; toggle in align panel)
+  whiteBorder:false, // white-border FOLD mode: ~5mm white margin around each photo; no cutting,
+                     // crop marks off, fold guides (ticks + dotted lines) between pages instead
   duplexX:0, duplexY:0, // mm nudge applied to sheet 1 (front) to align with sheet 2 (back)
   duplexRot:0, duplexScale:100, // deg rotation and % scale applied to sheet 1 for skew/stretch drift
   editZoom:1, // VISUAL-only zoom for the editor spread view; never affects print/download size
@@ -877,6 +965,19 @@ function paperInfo(){
 }
 
 function save(){ try{ localStorage.setItem("zinepress2", JSON.stringify(state)); }catch(e){} historyPush(); }
+
+/* WHITE-BORDER SIZE (proportional). The user calibrated the look they want on "A4, 8-page": a 4.5mm frame on
+   that template's cell. A4 landscape 8-page cell width = 297/4 = 74.25mm, so the reference ratio is
+   4.5 / 74.25 = 6.06% of the cell width. We keep THAT PROPORTION on every paper size and template — the border
+   grows/shrinks with the page so it always LOOKS like the A4 8-page border (a bigger page gets a bigger border,
+   a smaller page a smaller one). Returns the border thickness in millimetres for the ACTIVE template/paper. */
+const WB_RATIO = 4.5 / 74.25;   // reference: 4.5mm border on the A4 landscape 8-page cell (297mm/4 cols)
+function borderMm(){
+  const p=paperInfo();
+  const sh=imposition()[0]||{cols:4,rows:2};
+  const cellWmm=p.wmm/sh.cols;              // this template/paper's actual cell width
+  return cellWmm * WB_RATIO;                // same proportion as the A4 8-page reference
+}
 
 /* ---------------- undo / redo (content history) ---------------- */
 /* Snapshots only the editable CONTENT (pages/cover/back/format/paper), not view/print
@@ -942,7 +1043,7 @@ function zineSnapshot(){
     format:state.format, paper:state.paper,
     pages:state.pages, cover:state.cover, back:state.back,
     savedTemplates:state.savedTemplates,
-    cropMarks:state.cropMarks, duplexX:state.duplexX, duplexY:state.duplexY,
+    cropMarks:state.cropMarks, whiteBorder:state.whiteBorder, duplexX:state.duplexX, duplexY:state.duplexY,
     duplexRot:state.duplexRot, duplexScale:state.duplexScale
   };
 }
@@ -1012,6 +1113,7 @@ function hydrate(loaded){
     state.savedTemplates = loaded.savedTemplates.filter(t=>t&&t.id&&Array.isArray(t.sheets));
   }
   state.cropMarks = (loaded.cropMarks===undefined) ? true : !!loaded.cropMarks;
+  state.whiteBorder = !!loaded.whiteBorder;
   state.duplexX = num(loaded.duplexX,0);
   state.duplexY = num(loaded.duplexY,0);
   state.duplexRot = num(loaded.duplexRot,0);
@@ -1076,10 +1178,25 @@ function ensurePages(){
   for(let i=0;i<state.pages.length;i++){
     let p=state.pages[i];
     if(!p||typeof p!=="object"){ p={layout:def,imgs:[null,null]}; state.pages[i]=p; }
-    if(p.layout!=="single"&&p.layout!=="split") p.layout="single";
+    if(p.layout!=="single"&&p.layout!=="split"&&p.layout!=="spread"&&p.layout!=="spreadR") p.layout="single";
     if(!Array.isArray(p.imgs)) p.imgs=[null,null];
     while(p.imgs.length<2) p.imgs.push(null);
     p.imgs[0]=normImg(p.imgs[0]); p.imgs[1]=normImg(p.imgs[1]);
+  }
+  // repair 2-page spreads: a "spread" left page must sit on a valid facing pair with its next page as
+  // "spreadR"; otherwise (after reorder / page-count change) demote it back to a normal single page.
+  for(let i=0;i<state.pages.length;i++){
+    const p=state.pages[i];
+    if(p.layout==="spread"){
+      const j=i+1, pj=state.pages[j];
+      if(!isSpreadLeft(i,state.pages.length) || !pj){ p.layout="single"; }
+      else { pj.layout="spreadR"; pj.imgs=[null,null]; }
+    }
+  }
+  // any orphaned "spreadR" (its left partner is no longer a spread) becomes a normal page again
+  for(let i=0;i<state.pages.length;i++){
+    const p=state.pages[i];
+    if(p.layout==="spreadR"){ const pl=state.pages[i-1]; if(!pl||pl.layout!=="spread") p.layout="single"; }
   }
 }
 
@@ -1362,10 +1479,17 @@ function renderTray(){
   grid.innerHTML="";
   const cnt=document.getElementById("photosCount");
   if(cnt){ cnt.textContent=photoTray.length; cnt.hidden=photoTray.length===0; }
+  // pop the tray icon (lid flips open) when new photos land, as a little "filed away" cue
+  const _pb=document.getElementById("photosBtn");
+  if(_pb && photoTray.length>(renderTray._last||0)){ _pb.classList.remove("pop"); void _pb.offsetWidth; _pb.classList.add("pop"); setTimeout(()=>_pb.classList.remove("pop"),360); }
+  renderTray._last=photoTray.length;
   const clr=document.getElementById("trayClearBtn"); if(clr) clr.hidden=photoTray.length===0;
   if(!photoTray.length){ const em=document.createElement("div"); em.className="tray-empty"; em.textContent="No photos yet. Tap “＋ Add photos to tray”."; grid.appendChild(em); return; }
+  // set of photo sources currently placed anywhere in the zine (pages, covers) so we can dim "used" tray photos
+  const used=usedPhotoSrcs();
   photoTray.forEach((it)=>{
-    const cell=document.createElement("div"); cell.className="tray-cell"+(trayPlaceSel===it.id?" sel":""); cell.setAttribute("draggable","true"); cell.dataset.id=it.id;
+    const isUsed=used.has(it.entry.src);
+    const cell=document.createElement("div"); cell.className="tray-cell"+(trayPlaceSel===it.id?" sel":"")+(isUsed?" used":""); cell.setAttribute("draggable","true"); cell.dataset.id=it.id;
     const img=document.createElement("img"); img.src=it.entry.src; img.alt=it.name;
     const nm=document.createElement("div"); nm.className="tray-name"; nm.textContent=it.name;
     const del=document.createElement("button"); del.className="tray-del"; del.textContent="×"; del.title="Remove from tray";
@@ -1378,8 +1502,18 @@ function renderTray(){
     });
     // tap-to-place (touch + click): select this photo, then the next slot tap places it
     cell.addEventListener("click",(e)=>{ if(e.target===del)return; trayPlaceSel=(trayPlaceSel===it.id?null:it.id); renderTray(); markPlaceTargets(); if(trayPlaceSel)toast("Now tap a page slot to place it"); });
-    cell.appendChild(img); cell.appendChild(nm); cell.appendChild(del); grid.appendChild(cell);
+    cell.appendChild(img); cell.appendChild(nm);
+    if(isUsed){ const ub=document.createElement("span"); ub.className="tray-used"; ub.textContent="Used"; ub.title="Already placed in your zine — you can still reuse it"; cell.appendChild(ub); }
+    cell.appendChild(del); grid.appendChild(cell);
   });
+}
+/* every photo source currently placed in the zine (interior pages + front/back covers), for the tray "used" cue */
+function usedPhotoSrcs(){
+  const set=new Set();
+  (state.pages||[]).forEach(pg=>{ if(pg&&Array.isArray(pg.imgs)) pg.imgs.forEach(d=>{ if(d&&d.src) set.add(d.src); }); });
+  if(state.cover&&state.cover.bg&&state.cover.bg.src) set.add(state.cover.bg.src);
+  if(state.back&&state.back.bg&&state.back.bg.src) set.add(state.back.bg.src);
+  return set;
 }
 /* toggle the dashed highlight on empty-ish slots while a tray photo is armed for tap-to-place */
 function markPlaceTargets(){
@@ -1508,8 +1642,16 @@ function buildPageCard(i,total){
     mv.appendChild(mkBtn("←",-1,"Move page earlier", i<=1));
     mv.appendChild(mkBtn("→",1,"Move page later", i>=total-2));
     phead.appendChild(mv);
-    const tg=document.createElement("select"); tg.innerHTML='<option value="single">1 portrait</option><option value="split">2 horiz.</option>'; tg.value=pg.layout;
-    tg.onchange=()=>{ pg.layout=tg.value; save(); renderEditor(); }; phead.appendChild(tg);
+    // right half of a 2-page spread has no controls of its own (it's driven by its left page)
+    if(pg.layout!=="spreadR"){
+      const tg=document.createElement("select");
+      let opts='<option value="single">1 portrait</option><option value="split">2 horiz.</option>';
+      // a full-page spread needs THIS page to be the LEFT page of a real facing pair (its pair index i+1 is
+      // also interior). spreadsList pairs [1,2],[3,4]… so a valid left page is the first of its pair.
+      if(isSpreadLeft(i,total)) opts+='<option value="spread">2-page landscape</option>';
+      tg.innerHTML=opts; tg.value=pg.layout;
+      tg.onchange=()=>{ setPageLayout(i,tg.value); }; phead.appendChild(tg);
+    }
   }
   card.appendChild(phead);
   const canvas=document.createElement("div"); canvas.className="canvas"+((!isCover&&!isBack&&pg.layout==="split")?" split":"");
@@ -1520,14 +1662,79 @@ function buildPageCard(i,total){
   return card;
 }
 
-/* group pages into reading spreads: cover solo, interior facing pairs, back solo */
+/* can page i START a 2-page landscape spread? It must be the LEFT page of a real facing reading pair (i, i+1),
+   both interior. We allow this on ANY facing pair regardless of how the two panels are placed on the print
+   sheet — at print time each half is drawn into its own cell (with that cell's rotation), so the photo recombines
+   into one continuous image when the finished booklet/zine is folded, even for saddle-stitch bindings where the
+   two halves aren't adjacent cells on the flat sheet. */
+function isSpreadLeft(i,total){
+  total=total||state.pages.length;
+  if(i<1||i>=total-1) return false;          // covers can't spread
+  if(i+1>total-2) return false;              // the pair page must also be interior (not the back cover)
+  if(((i-1)%2)!==0) return false;            // must be a facing-pair LEFT page (odd index 1,3,5…)
+  return bothPanelsPlaced(i, i+1);           // both pages must actually appear on a print sheet
+}
+/* both reading pages appear somewhere on the imposition (guards against malformed custom templates) */
+function bothPanelsPlaced(a,b){
+  const sheets=imposition(); if(!sheets||!sheets.length) return false;
+  let seenA=false, seenB=false;
+  for(let s=0;s<sheets.length;s++){ for(const p of sheets[s].panels){ if(!p)continue; if(p.page===a)seenA=true; if(p.page===b)seenB=true; } }
+  return seenA && seenB;
+}
+/* are the two reading-page indices in horizontally-adjacent cells on the SAME sheet? (used to decide whether a
+   spread can be drawn as one continuous box, vs. as two separate per-cell halves.) */
+function panelsHorizontallyAdjacent(a,b){
+  const sheets=imposition(); if(!sheets||!sheets.length) return false;
+  for(let s=0;s<sheets.length;s++){
+    const sh=sheets[s], cols=sh.cols;
+    let ap=-1,bp=-1;
+    for(let k=0;k<sh.panels.length;k++){ const p=sh.panels[k]; if(!p)continue; if(p.page===a)ap=k; if(p.page===b)bp=k; }
+    if(ap<0||bp<0) continue;
+    const ar=Math.floor(ap/cols), ac=ap%cols, br=Math.floor(bp/cols), bc=bp%cols;
+    if(ar===br && Math.abs(ac-bc)===1) return true;
+  }
+  return false;
+}
+/* the right-half page index of a spread whose left page is i */
+function spreadPartner(i){ return i+1; }
+/* set an interior page's layout; when turning a 2-page spread on/off, sync the partner page */
+function setPageLayout(i,val){
+  const pg=state.pages[i]; if(!pg) return;
+  const prev=pg.layout;
+  if(val==="spread"){
+    const j=spreadPartner(i); const pj=state.pages[j];
+    pg.layout="spread"; if(!Array.isArray(pg.imgs)) pg.imgs=[null,null];
+    if(pg.imgs[0]) pg.imgs[0].fit=false;   // FILL the wide slot by default (no empty edges); user can switch to Fit
+    if(pj){ pj.layout="spreadR"; pj.imgs=[null,null]; }   // right half is driven by the left page's photo
+  } else {
+    // leaving spread: free the partner back to a normal single page
+    if(prev==="spread"){ const pj=state.pages[spreadPartner(i)]; if(pj && pj.layout==="spreadR"){ pj.layout="single"; } }
+    pg.layout=val;
+  }
+  clearSelection(); save(); renderEditor();
+}
+/* group pages into reading spreads: cover solo, back solo, and interior pages paired up. A 2-page landscape
+   spread (a "spread" page + its "spreadR" partner) is ALWAYS kept together as one unit, wherever it sits —
+   so the user can place a full-landscape spread on any consecutive pair, not just the natural facing pairs.
+   Remaining interior pages fall into normal facing pairs around it. */
 function spreadsList(){
   const total=state.pages.length;
   const spreads=[];
   spreads.push([0]);                        // front cover alone
-  for(let i=1;i<total-1;i+=2){              // interior pages as facing pairs
-    const pair=[i]; if(i+1<total-1) pair.push(i+1);
-    spreads.push(pair);
+  let i=1;
+  while(i<total-1){
+    const p=state.pages[i];
+    if(p && p.layout==="spread" && i+1<total-1){
+      spreads.push([i, i+1]);               // landscape spread: its two halves, together
+      i+=2; continue;
+    }
+    // normal interior page(s): pair with the next unless that next starts a spread
+    const nx=state.pages[i+1];
+    if(i+1<total-1 && !(nx && (nx.layout==="spread"))){
+      spreads.push([i, i+1]); i+=2;
+    } else {
+      spreads.push([i]); i+=1;              // lone page (its neighbour begins a spread)
+    }
   }
   if(total>1) spreads.push([total-1]);      // back cover alone
   return spreads;
@@ -1647,27 +1854,145 @@ function movePage(i,dir){
   clearSelection(); save(); renderEditor();
   toast("Page moved");
 }
+/* move a whole 2-page landscape spread (left page li + its spreadR partner) one reading-slot earlier/later,
+   keeping the pair together. dir=-1 earlier, +1 later. */
+/* move a 2-page landscape spread to the previous/next VALID facing pair (e.g. 6-7 -> 4-5). We SWAP the two
+   pages' contents with the target pair's contents (rather than splicing the array, which would shift the
+   whole imposition). The spread keeps its layout flags; the pages it lands on become the spread. */
+function moveSpread(li,dir){
+  const total=state.pages.length;
+  // valid spread-left slots are the horizontally-adjacent facing pairs (fixed per template)
+  const valid=[];
+  for(let k=1;k+1<=total-2;k+=2){ if(((k-1)%2)===0 && panelsHorizontallyAdjacent(k,k+1)) valid.push(k); }
+  const pos=valid.indexOf(li);
+  if(pos<0) return;
+  const dest = dir<0 ? valid[pos-1] : valid[pos+1];
+  if(dest==null){ toast(dir<0?"Already the first spread spot":"Already the last spread spot"); return; }
+  // swap contents of (li,li+1) with (dest,dest+1)
+  const A=state.pages[li], A2=state.pages[li+1], B=state.pages[dest], B2=state.pages[dest+1];
+  state.pages[dest]=A; state.pages[dest+1]=A2; state.pages[li]=B; state.pages[li+1]=B2;
+  // the pages that USED to be the spread (now at dest... no — A carries the spread flags to dest) — good.
+  // the displaced pages (B,B2) may have been spreadR/spread; normalise them to single so no orphan remains.
+  if(B) B.layout=(B.layout==="spread"||B.layout==="spreadR")?"single":B.layout;
+  if(B2) B2.layout=(B2.layout==="spread"||B2.layout==="spreadR")?"single":B2.layout;
+  clearSelection();
+  currentSpread=spreadOfPage(dest);
+  save(); renderEditor();
+  toast("Spread moved");
+}
 
 function renderEditor(){
   ensurePages();
+  document.body.classList.toggle("white-border", !!state.whiteBorder);   // show the fold-mode margin in-editor
   Object.keys(registry).forEach(k=>delete registry[k]);
-  // match the editor page shape to the actual printed panel (paper + grid, inside the 9mm safe inset)
-  const _p=paperInfo(); const sheetW=_p.wmm-18, sheetH=_p.hmm-18;
+  // match the editor page shape to the actual printed panel. Normally the sheet has a 9mm inset per edge
+  // (−18mm total); in WHITE-BORDER mode the inset is 0 (see renderSheetCanvas), so the cell = full paper/grid.
+  const _p=paperInfo(); const insetMm=state.whiteBorder?0:18;
+  const sheetW=_p.wmm-insetMm, sheetH=_p.hmm-insetMm;
   const sh=imposition()[0]||{cols:4,rows:2};
   // panel shape = the printed cell. paperInfo() already returns a portrait sheet for
   // portraitPages templates, so cell aspect (panelW/panelH) is correct as-is on every layout.
   const panelAR=((sheetW/sh.cols)/(sheetH/sh.rows)).toFixed(4);
   document.documentElement.style.setProperty("--panel-ar", panelAR);
+  // 2-page spread canvas = two page cells side by side
+  document.documentElement.style.setProperty("--spread-ar", (2*(sheetW/sh.cols)/(sheetH/sh.rows)).toFixed(4));
+  // WHITE-BORDER (editor preview): the physical border is now PROPORTIONAL — a fixed fraction (WB_RATIO) of each
+  // template's cell width (calibrated to the 4.5mm-on-A4-8-page look). Since that fraction is constant across
+  // templates, the editor border is simply WB_RATIO of the card width — a constant on-screen thickness that
+  // matches the proportional print exactly. (No fixed-mm reference needed anymore.)
+  const cellWmm=sheetW/sh.cols;
+  const cellHmm=sheetH/sh.rows;
+  const padPct=WB_RATIO*100;                     // border as a % of card WIDTH (same proportion as print)
+  const cardAR=(cellWmm/cellHmm);                // card width / card height for this template
+  document.documentElement.style.setProperty("--wb-pad", padPct.toFixed(3)+"%");
+  // top/bottom bars are % of card HEIGHT, so multiply by cardAR to render the SAME pixels as the width border.
+  document.documentElement.style.setProperty("--wb-gap", (padPct*cardAR).toFixed(3)+"%");
+  // a spread card is TWO pages wide, so the side border as a % of that double width is half the single-page %.
+  document.documentElement.style.setProperty("--wb-pad-sp", (padPct/2).toFixed(3)+"%");
   const total=state.pages.length;
   renderNav();
   const spreads=spreadsList();
   const idxs=spreads[currentSpread]||[0];
   const host=document.getElementById("pages");
   host.innerHTML="";
-  host.className="spread-view"+(idxs.length===1?" single":"");
-  idxs.forEach(i=> host.appendChild(buildPageCard(i,total)) );
+  const isSpreadPair = idxs.length===2 && state.pages[idxs[0]] && state.pages[idxs[0]].layout==="spread";
+  // a spread = ONE merged wide card (single column layout with the wide spread aspect)
+  host.className="spread-view"+((idxs.length===1||isSpreadPair)?" single":"")+(isSpreadPair?" spread-pair":"");
+  try{
+    if(isSpreadPair){ host.appendChild(buildSpreadCard(idxs[0],idxs[1],total)); }
+    else { idxs.forEach(i=> host.appendChild(buildPageCard(i,total)) ); }
+  }catch(err){
+    // never blank the editor: if a card fails to build (e.g. a half-applied spread from an older session),
+    // demote any spread layouts to plain pages and rebuild this spread from scratch.
+    console.error("page card build failed; repairing layouts",err);
+    state.pages.forEach(p=>{ if(p && (p.layout==="spread"||p.layout==="spreadR")) p.layout="single"; });
+    host.innerHTML="";
+    (idxs||[0]).forEach(i=>{ try{ host.appendChild(buildPageCard(i,total)); }catch(_){} });
+  }
   reselect();
   markPlaceTargets();   // keep tap-to-place highlights after a re-render if a tray photo is armed
+}
+/* ONE merged card holding ONE continuous photo across the full two-page width — exactly like the digital
+   preview. Single <img> with object-fit:cover = the photo is always continuous (no seam, no gap). The white
+   border (when on) frames the OUTER edge only. A faint centre line marks the fold without cutting the photo.
+   Editing targets the left page's imgs[0]. */
+function buildSpreadCard(li,ri,total){
+  const pg=state.pages[li];
+  // spread photos default to FILL (cover the whole wide slot, edges cropped) so there's no empty slot space;
+  // user can switch to Fit (whole photo) in the bottom box if they want the full frame letterboxed.
+  const putImg=(entry)=>{ pg.imgs[0]=entry; save(); renderEditor(); };
+  const card=document.createElement("div"); card.className="page spread-card";
+  const phead=document.createElement("div"); phead.className="phead";
+  const rsp=document.createElement("span"); rsp.className="role cover"; rsp.textContent="Pages "+li+"–"+ri+" · landscape ✦"; phead.appendChild(rsp);
+  // move the whole spread earlier/later (moves both pages together, keeping the pair intact)
+  const mv=document.createElement("span"); mv.className="page-move";
+  // valid spread slots (facing pairs that are horizontally adjacent on the sheet); arrows hop between them
+  const validSlots=[]; for(let k=1;k+1<=total-2;k+=2){ if(((k-1)%2)===0 && panelsHorizontallyAdjacent(k,k+1)) validSlots.push(k); }
+  const slotPos=validSlots.indexOf(li);
+  const mkBtn=(txt,dir,title,disabled)=>{ const b=document.createElement("button"); b.type="button"; b.className="pmv"; b.textContent=txt; b.title=title; b.disabled=disabled; b.onclick=(e)=>{ e.stopPropagation(); moveSpread(li,dir); }; return b; };
+  mv.appendChild(mkBtn("←",-1,"Move spread to previous pair", slotPos<=0));
+  mv.appendChild(mkBtn("→",1,"Move spread to next pair", slotPos<0||slotPos>=validSlots.length-1));
+  phead.appendChild(mv);
+  const tg=document.createElement("select");
+  tg.innerHTML='<option value="single">1 portrait</option><option value="split">2 horiz.</option><option value="spread">2-page landscape</option>';
+  tg.value="spread"; tg.onchange=()=>{ setPageLayout(li,tg.value); }; phead.appendChild(tg);
+  card.appendChild(phead);
+  const canvas=document.createElement("div"); canvas.className="canvas spread-canvas";
+  const slot=document.createElement("div"); slot.className="slot spread-slot";
+  const d=pg.imgs[0];
+  if(d){
+    const selId="img-"+li+"-0";
+    registry[selId]={ id:selId, kind:"photoslot", label:"Landscape spread (pages "+li+"–"+(li+1)+")", pageIdx:li, slotIdx:0, coverEl:slot };
+    slot.classList.add("has-img");
+    d.fit=false;   // spreads ALWAYS fill (cover) — never letterbox, so no cream canvas shows through
+    const img=document.createElement("img"); img.className="photo"; img.src=d.src;
+    const pp=photoPos(d); img.style.objectPosition=pp.op; img.style.transform=pp.tf;
+    slot.appendChild(img);
+    img.addEventListener("mousedown",()=>selectEl(selId));
+    img.addEventListener("touchstart",()=>selectEl(selId),{passive:true});
+    panZoom(img,slot,d);
+  } else {
+    const ph=document.createElement("div"); ph.className="placeholder"; ph.innerHTML='<span class="ph-opt">Tap to add one landscape photo</span><span class="ph-div"></span><span class="ph-opt">Drag from tray</span>'; slot.appendChild(ph);
+    slot.style.cursor="pointer";
+    slot.addEventListener("click",(e)=>{
+      if(trayPlaceSel){ const id=trayPlaceSel; trayPlaceSel=null; markPlaceTargets(); placeTrayInterior(li,0,id); renderTray(); return; }
+      openFilePicker((f)=>loadImg(f,putImg));
+    });
+  }
+  slot.addEventListener("dragover",e=>{e.preventDefault(); slot.classList.add("drag");});
+  slot.addEventListener("dragleave",()=>slot.classList.remove("drag"));
+  slot.addEventListener("drop",e=>{
+    e.preventDefault(); slot.classList.remove("drag");
+    let trayId=""; try{ trayId=e.dataTransfer.getData("text/tray-id"); }catch(_){}
+    if(trayId){ placeTrayInterior(li,0,trayId); return; }
+    const f=e.dataTransfer.files[0]; if(f)loadImg(f,putImg);
+  });
+  canvas.appendChild(slot);
+  const frame=document.createElement("div"); frame.className="spread-frame";   // even outer white border
+  const wl=document.createElement("div"); wl.className="wb-l"; const wr=document.createElement("div"); wr.className="wb-r";
+  frame.appendChild(wl); frame.appendChild(wr); canvas.appendChild(frame);
+  card.appendChild(canvas);
+  return card;
 }
 
 function imageSlot(pageIdx,slotIdx){
@@ -1783,12 +2108,13 @@ function backSlot(){
   else { const ph=document.createElement("div"); ph.className="placeholder cover-ph"; ph.innerHTML='<span class="ph-opt">Tap slot</span><span class="ph-div"></span><span class="ph-opt">Drag from tray</span>'; wrap.appendChild(ph); }
   // name only shows when enabled
   if(state.back.showName){
-    const name=document.createElement("input"); name.className="field name"; name.placeholder="your name / handle"; name.value=state.back.name; name.style.fontFamily=state.back.font; name.style.color=state.back.color; name.style.textShadow=shadowFor(state.back.color); name.style.textAlign=state.back.align||"center";
-    name.oninput=()=>{ state.back.name=name.value; save(); };
+    const name=document.createElement("textarea"); name.className="field name"; name.rows=1; name.placeholder="your name / handle"; name.value=state.back.name; name.style.fontFamily=state.back.font; name.style.color=state.back.color; name.style.textShadow=shadowFor(state.back.color); name.style.textAlign=state.back.align||"center";
+    name.oninput=()=>{ state.back.name=name.value; autosize(name); save(); };
     name.onfocus=()=>selectEl("back-name");
     const nw=makeDraggable(name,wrap,state.back.pos.name,"back-name",false);
     registry["back-name"]={id:"back-name",kind:"text",label:"Back cover name",target:state.back,pos:state.back.pos.name,wrapEl:nw};
     wrap.appendChild(nw);
+    setTimeout(()=>autosize(name),0);
   }
   // QR only shows when enabled
   if(state.back.showQR){
@@ -1834,9 +2160,22 @@ const LAYOUT_16_ICUT=[
   {page:11,rot:180},{page:10,rot:180},{page:1,rot:180},{page:14,rot:180},
   {page:12,rot:0}, {page:13,rot:0}, {page:15,rot:0}, {page:0,rot:0}
 ];
+/* One-sheet 16-page FOLD zine (Emon-Hassan-style tabloid template seen in the reel). 4 cols x 4 rows,
+   printed one side, top TWO bands rotated 180 (upper half of the sheet is upside-down). No I-cut — a
+   single folding sequence. Grid page LABELS (interior 1..14, FC=front, BC=back) -> indices (label, FC=0, BC=15):
+     row0 (180): 14 13 12 11    row1 (180): 7 8 9 10
+     row2 (0):    6  5  4  3    row3 (0):  BC FC 1 2  ->  15 0 1 2 */
+const LAYOUT_16_FOLD=[
+  {page:14,rot:180},{page:13,rot:180},{page:12,rot:180},{page:11,rot:180},
+  {page:7,rot:180}, {page:8,rot:180}, {page:9,rot:180}, {page:10,rot:180},
+  {page:6,rot:0},   {page:5,rot:0},   {page:4,rot:0},   {page:3,rot:0},
+  {page:15,rot:0},  {page:0,rot:0},   {page:1,rot:0},   {page:2,rot:0}
+];
 const BUILTIN_TEMPLATES=[
   { id:"icut16", name:"16-page zine (I-cut)", book:16, builtin:true, portraitPages:true,
-    sheets:[{cols:4, rows:4, panels:LAYOUT_16_ICUT.map(p=>({page:p.page,rot:p.rot}))}] }
+    sheets:[{cols:4, rows:4, panels:LAYOUT_16_ICUT.map(p=>({page:p.page,rot:p.rot}))}] },
+  { id:"fold16", name:"16-page one-sheet zine (fold)", book:16, builtin:true, portraitPages:true,
+    sheets:[{cols:4, rows:4, panels:LAYOUT_16_FOLD.map(p=>({page:p.page,rot:p.rot}))}] }
 ];
 function builtinTemplate(id){ return BUILTIN_TEMPLATES.find(t=>t.id===id)||null; }
 function imposition(){
@@ -1976,6 +2315,31 @@ function drawCoverPhoto(ctx, img, entry, x, y, w, h){
   }
   ctx.restore();
 }
+/* draw ONE HALF of a 2-page landscape spread photo into a single page cell (x,y,w,h). The photo is
+   cover-fit to a virtual DOUBLE-WIDE box (2w × h); the left page shows its left half, the right page its
+   right half, so the two facing pages recombine into one continuous landscape image. Pan/zoom (px/py/scale)
+   apply to the whole double-wide box, matching the editor's single wide canvas. */
+function drawSpreadHalf(ctx, img, entry, x, y, w, h, half){
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+  const W=2*w;                              // virtual double-wide box width
+  // origin X of the virtual box so the requested half lands on this cell
+  const vx = (half==="R") ? (x - w) : x;
+  const ir=img.width/img.height, br=W/h;
+  let dw,dh;
+  if(entry.fit){
+    if(ir>br){ dw=W; dh=W/ir; } else { dh=h; dw=h*ir; }
+    dw*=entry.scale; dh*=entry.scale;
+    ctx.drawImage(img, vx+(W-dw)/2, y+(h-dh)/2, dw, dh);
+  } else {
+    if(ir>br){ dh=h; dw=h*ir; } else { dw=W; dh=W/ir; }
+    dw*=entry.scale; dh*=entry.scale;
+    const px=num(entry.px,0), py=num(entry.py,0);
+    const dx=-px*(dw-W)/2, dy=-py*(dh-h)/2;
+    ctx.drawImage(img, vx+(W-dw)/2+dx, y+(h-dh)/2+dy, dw, dh);
+  }
+  ctx.restore();
+}
 /* wrap text to a max pixel width (matches the editor's 84% panel-width wrapping),
    respecting explicit newlines first, then word-wrapping each line. */
 function wrapLines(ctx, text, maxW){
@@ -2033,8 +2397,22 @@ async function renderPanelToCanvas(ctx, idx, px, py, pw, ph){
     return;
   }
   const pg=state.pages[idx]; if(!pg) return;
+  if(pg.layout==="spread" || pg.layout==="spreadR"){
+    // 2-page landscape spread: the photo lives on the LEFT page's imgs[0]. This page draws its half
+    // (left page = left half, right page = right half) so the facing pages recombine into one image.
+    const leftIdx = (pg.layout==="spread") ? idx : (idx-1);
+    const src = state.pages[leftIdx] && state.pages[leftIdx].imgs[0];
+    const half = (pg.layout==="spread") ? "L" : "R";
+    if(src){ try{ const im=await loadImageEl(src.src); drawSpreadHalf(ctx,im,src,px,py,pw,ph,half); }catch(e){} }
+    return;
+  }
   if(pg.layout==="split"){
-    const pad=ph*0.046, gap=ph*0.046;
+    // In white-border mode the outer 7mm frame is already applied by the caller (px..ph is the inner box),
+    // so add NO extra outer pad here — just a single 7mm gutter between the two photos (matches the editor).
+    // In normal mode keep the classic 4.6%-of-height margin around and between the two.
+    const mmToPx=DPI/25.4;
+    const pad = state.whiteBorder ? 0 : ph*0.046;
+    const gap = state.whiteBorder ? Math.round(borderMm()*mmToPx) : ph*0.046;
     const cellH=(ph-pad*2-gap)/2, cellW=pw-pad*2;
     for(let s=0;s<2;s++){ const d=pg.imgs[s]; const cy=py+pad+s*(cellH+gap); if(d){ try{ const im=await loadImageEl(d.src); drawCoverPhoto(ctx,im,d,px+pad,cy,cellW,cellH); }catch(e){} } }
   } else {
@@ -2048,7 +2426,12 @@ async function renderSheetCanvas(sheet, sheetIndex){
   ctx.fillStyle="#fff"; ctx.fillRect(0,0,dim.w,dim.h);
   // safe margin inset (matches print: 9mm per edge) in px at 300 DPI (1mm = 300/25.4 px)
   const mmToPx=DPI/25.4;
-  const inset=9*mmToPx;
+  // Safe inset: 9mm normally (keeps crop/trim marks inside the printer's unprintable border). In WHITE-BORDER
+  // FOLD mode there are no cut marks and each cell carries its own 7mm frame, so we drop the sheet inset to 0
+  // — that makes the OUTER margin (paper edge → photo) equal the 7mm frame, matching the interior pages and
+  // the editor. Without this, the outermost cells showed 9mm + 7mm of white while inner ones showed 7mm,
+  // reading as a bigger bottom/edge margin (the exact bug).
+  const inset=(state.whiteBorder?0:9)*mmToPx;
   // duplex calibration on sheet 0 (front): translate + rotate + scale around the sheet center
   if(sheetIndex===0){
     const dx=(state.duplexX||0)*mmToPx, dy=(state.duplexY||0)*mmToPx, rot=(state.duplexRot||0)*Math.PI/180, sc=(state.duplexScale||100)/100;
@@ -2059,6 +2442,9 @@ async function renderSheetCanvas(sheet, sheetIndex){
   const areaX=inset, areaY=inset;
   const areaW=dim.w-inset*2, areaH=dim.h-inset*2;
   const cw=areaW/sheet.cols, chh=areaH/sheet.rows;
+  // WHITE-BORDER: a proportional white frame — WB_RATIO of the cell width (calibrated to the 4.5mm-on-A4-8-page
+  // look), so it scales with the page across every paper size / template. border=0 when off (photo fills cell).
+  const border = state.whiteBorder ? Math.round(borderMm()*mmToPx) : 0;
   for(let r=0;r<sheet.rows;r++){
     for(let c=0;c<sheet.cols;c++){
       const panelIndex=r*sheet.cols+c;
@@ -2066,14 +2452,85 @@ async function renderSheetCanvas(sheet, sheetIndex){
       const x=areaX+c*cw, y=areaY+r*chh;
       ctx.save();
       if(panel.rot===180){ ctx.translate(x+cw/2, y+chh/2); ctx.rotate(Math.PI); ctx.translate(-(x+cw/2), -(y+chh/2)); }
-      await renderPanelToCanvas(ctx, panel.page, x, y, cw, chh);
+      // Work out the fold side for a 2-page spread so the white frame is drawn on the OUTER edges only and
+      // the photo runs continuously across the fold (no white stripe cutting the image in half). The left
+      // page's fold is its right edge; the right page's fold is its left edge — a 180° cell flips that.
+      const pgObj = state.pages[panel.page];
+      const isSpreadPg = pgObj && (pgObj.layout==="spread" || pgObj.layout==="spreadR");
+      // 2-page landscape spreads are drawn as ONE continuous image over the combined two-cell box in a
+      // separate pass below (rotation-proof, no seam) — so skip the per-cell photo + frame here entirely.
+      if(isSpreadPg){ ctx.restore(); continue; }
+      let bx=x+border, bw=cw-border*2;
+      await renderPanelToCanvas(ctx, panel.page, bx, y+border, bw, chh-border*2);
+      if(border>0){
+        ctx.fillStyle="#fff";
+        ctx.fillRect(x, y, cw, border);                 // top
+        ctx.fillRect(x, y+chh-border, cw, border);      // bottom
+        ctx.fillRect(x, y, border, chh);                // left
+        ctx.fillRect(x+cw-border, y, border, chh);      // right
+      }
       ctx.restore();
-      // panel cut guide (faint)
-      ctx.strokeStyle="rgba(150,150,150,.35)"; ctx.lineWidth=1; ctx.strokeRect(x,y,cw,chh);
+      // faint per-panel cut guide only when NOT in border mode (border mode uses fold guides instead)
+      if(!state.whiteBorder){ ctx.strokeStyle="rgba(150,150,150,.35)"; ctx.lineWidth=1; ctx.strokeRect(x,y,cw,chh); }
     }
   }
-  ctx.setTransform(1,0,0,1,0,0);   // reset before crop marks so they stay at true sheet edges
-  if(state.cropMarks){ drawCropMarksCanvas(ctx, dim.w, dim.h, mmToPx, sheet); }
+  // SPREAD PASS: draw each 2-page landscape spread. If its two cells sit side-by-side on THIS sheet (fold/zine
+  // templates) we draw the photo as ONE continuous image across the combined box — inherently seamless. If they
+  // are NOT adjacent (saddle-stitch booklets place the two facing pages apart on the flat sheet), we draw each
+  // HALF into its own cell with that cell's own rotation, so the picture recombines when the booklet is folded.
+  for(let r=0;r<sheet.rows;r++){
+    for(let c=0;c<sheet.cols;c++){
+      const panel=sheet.panels[r*sheet.cols+c]; if(!panel)continue;
+      const pgObj=state.pages[panel.page];
+      if(!pgObj || pgObj.layout!=="spread") continue;   // only act once, on the LEFT page of each spread
+      const partnerPage=panel.page+1;
+      let pr=-1,pc=-1;
+      for(let rr=0;rr<sheet.rows;rr++) for(let cc=0;cc<sheet.cols;cc++){ const pp=sheet.panels[rr*sheet.cols+cc]; if(pp && pp.page===partnerPage){ pr=rr; pc=cc; } }
+      if(pr<0) continue;
+      const src=pgObj.imgs[0];
+      const adjacent=(r===pr && Math.abs(c-pc)===1);
+      if(adjacent){
+        // ---- CONTINUOUS: one image across the combined 1x2 box, white frame on outer edges only ----
+        const x0=areaX+Math.min(c,pc)*cw, y0=areaY+Math.min(r,pr)*chh;
+        const uw=2*cw, uh=chh;
+        ctx.save();
+        if(panel.rot===180){ ctx.translate(x0+uw/2, y0+uh/2); ctx.rotate(Math.PI); ctx.translate(-(x0+uw/2), -(y0+uh/2)); }
+        const ix=x0+border, iy=y0+border, iw=uw-border*2, ih=uh-border*2;
+        if(src){ try{ const im=await loadImageEl(src.src); ctx.save(); ctx.beginPath(); ctx.rect(ix,iy,iw,ih); ctx.clip(); drawCoverPhoto(ctx, im, src, ix, iy, iw, ih); ctx.restore(); }catch(e){} }
+        if(border>0){
+          ctx.fillStyle="#fff";
+          ctx.fillRect(x0,y0,uw,border); ctx.fillRect(x0,y0+uh-border,uw,border);
+          ctx.fillRect(x0,y0,border,uh); ctx.fillRect(x0+uw-border,y0,border,uh);
+        }
+        ctx.restore();
+      } else if(src){
+        // ---- SPLIT: the two halves live in separate cells; draw each half in its own rotated cell ----
+        const halves=[{cellR:r,cellC:c,rot:panel.rot,half:"L"},{cellR:pr,cellC:pc,rot:(sheet.panels[pr*sheet.cols+pc]||{}).rot||0,half:"R"}];
+        for(const h of halves){
+          const hx=areaX+h.cellC*cw, hy=areaY+h.cellR*chh;
+          ctx.save();
+          if(h.rot===180){ ctx.translate(hx+cw/2, hy+chh/2); ctx.rotate(Math.PI); ctx.translate(-(hx+cw/2), -(hy+chh/2)); }
+          // fold side (no white inset there so the two halves meet); 180° flips left/right
+          let foldLocal = (h.half==="L") ? "R" : "L";
+          if(h.rot===180) foldLocal = (foldLocal==="R") ? "L" : "R";
+          let bx=hx+border, bw=cw-border*2, by=hy+border, bh=chh-border*2;
+          if(foldLocal==="R"){ bw=cw-border; }
+          else { bx=hx; bw=cw-border; }
+          try{ const im=await loadImageEl(src.src); ctx.save(); ctx.beginPath(); ctx.rect(bx,by,bw,bh); ctx.clip(); drawSpreadHalf(ctx, im, src, bx, by, bw, bh, h.half); ctx.restore(); }catch(e){}
+          if(border>0){
+            ctx.fillStyle="#fff";
+            ctx.fillRect(hx,hy,cw,border); ctx.fillRect(hx,hy+chh-border,cw,border);
+            if(foldLocal!=="L") ctx.fillRect(hx,hy,border,chh);   // outer left
+            if(foldLocal!=="R") ctx.fillRect(hx+cw-border,hy,border,chh);  // outer right
+          }
+          ctx.restore();
+        }
+      }
+    }
+  }
+  ctx.setTransform(1,0,0,1,0,0);   // reset before marks so they stay at true sheet edges
+  if(state.whiteBorder){ drawFoldGuidesCanvas(ctx, dim.w, dim.h, mmToPx, sheet, areaX, areaY, cw, chh); }
+  else if(state.cropMarks){ drawCropMarksCanvas(ctx, dim.w, dim.h, mmToPx, sheet); }
   return cv;
 }
 /* crop marks on the 300 DPI canvas: trim guides that run from each PAPER EDGE to the 9mm
@@ -2117,6 +2574,53 @@ function drawCropMarksCanvas(ctx, W, H, mmToPx, sheetDef){
   // bold solid center crosshair (true paper center reference)
   const cl=Math.round(10*mmToPx), ct=Math.max(1,Math.round(0.35*mmToPx));
   ctx.fillRect(W/2-cl/2,H/2-ct/2,cl,ct); ctx.fillRect(W/2-ct/2,H/2-cl/2,ct,cl);
+  ctx.restore();
+}
+/* WHITE-BORDER FOLD MODE guides: no cutting. At each division between panels draw a faint dotted
+   FOLD line (in the white gutter) plus short solid TICKS poking in from the paper edges, so you can
+   line up a ruler and fold — no crop/trim marks. Runs on any grid (uses areaX/Y + cell size). */
+function drawFoldGuidesCanvas(ctx, W, H, mmToPx, sheetDef, areaX, areaY, cw, chh){
+  ctx.save();
+  const rows=sheetDef&&sheetDef.rows||2, cols=sheetDef&&sheetDef.cols||4;
+  const t=Math.max(1,Math.round(0.18*mmToPx));
+  const dash=Math.round(2.5*mmToPx), gap=Math.round(2.5*mmToPx);
+  const tick=Math.round(4*mmToPx);   // how far the edge ticks poke in
+  const areaR=areaX+cw*cols, areaB=areaY+chh*rows;
+  const dashV=(x,y0,y1)=>{ for(let y=y0;y<y1;y+=dash+gap) ctx.fillRect(Math.round(x-t/2), y, t, Math.min(dash,y1-y)); };
+  const dashH=(y,x0,x1)=>{ for(let x=x0;x<x1;x+=dash+gap) ctx.fillRect(x, Math.round(y-t/2), Math.min(dash,x1-x), t); };
+  // A 2-page landscape spread runs continuously across the fold between its two cells, so drawing the dotted
+  // fold line there would risk a dotted mark showing on the finished picture. Collect the seam of every spread
+  // (its shared column boundary + the row band it occupies) so we can SKIP the dashes over that stretch only.
+  const spreadSeams=[];   // {x, y0, y1} — a vertical fold segment to leave clean
+  if(sheetDef && sheetDef.panels){
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const panel=sheetDef.panels[r*cols+c]; if(!panel) continue;
+      const pg=state.pages[panel.page];
+      if(!pg || pg.layout!=="spread") continue;           // act once, on the left page of the spread
+      let pr=-1,pc=-1;
+      for(let rr=0;rr<rows;rr++) for(let cc=0;cc<cols;cc++){ const pp=sheetDef.panels[rr*cols+cc]; if(pp && pp.page===panel.page+1){ pr=rr; pc=cc; } }
+      if(pr<0 || pr!==r) continue;                        // pair must be side-by-side in the same row
+      const seamCol=Math.max(c,pc);                        // shared boundary = between the two columns
+      spreadSeams.push({ x:areaX+cw*seamCol, y0:areaY+chh*r, y1:areaY+chh*(r+1) });
+    }
+  }
+  // vertical fold between columns, but skip any stretch that crosses a spread seam (keep the photo clean)
+  const dashVSkip=(x,y0,y1)=>{
+    for(let y=y0;y<y1;y+=dash+gap){
+      const seg0=y, seg1=Math.min(y+dash,y1);
+      const inSeam=spreadSeams.some(s=>Math.abs(s.x-x)<1 && seg1>s.y0 && seg0<s.y1);
+      if(!inSeam) ctx.fillRect(Math.round(x-t/2), seg0, t, seg1-seg0);
+    }
+  };
+  // vertical fold lines between columns (dashes over a spread seam are skipped so the photo stays clean)
+  ctx.fillStyle="rgba(0,0,0,.38)";
+  for(let c=1;c<cols;c++){ const x=areaX+cw*c; dashVSkip(x, areaY, areaB); }
+  // horizontal fold lines between rows
+  for(let r=1;r<rows;r++){ const y=areaY+chh*r; dashH(y, areaX, areaR); }
+  // solid ticks from the paper edges at each fold division (easy to align a ruler)
+  ctx.fillStyle="#000";
+  for(let c=1;c<cols;c++){ const x=Math.round(areaX+cw*c); ctx.fillRect(x-t/2, 0, t, tick); ctx.fillRect(x-t/2, H-tick, t, tick); }
+  for(let r=1;r<rows;r++){ const y=Math.round(areaY+chh*r); ctx.fillRect(0, y-t/2, tick, t); ctx.fillRect(W-tick, y-t/2, tick, t); }
   ctx.restore();
 }
 /* ---------------- print-shop PDF (one 300 DPI sheet per page, JPEG via DCTDecode) ---------------- */
@@ -2190,15 +2694,36 @@ async function savePreviewZip(){
 async function renderReadingPages(){
   const sh=imposition()[0]||{cols:4,rows:2};
   const _p=paperInfo();
-  const cellW=(_p.wmm-18)/sh.cols, cellH=(_p.hmm-18)/sh.rows;   // page (reading) shape in mm
+  // page (reading) shape in mm — match the print cell: 9mm inset per edge normally, 0 in white-border mode
+  const insetMm=state.whiteBorder?0:18;
+  const cellW=(_p.wmm-insetMm)/sh.cols, cellH=(_p.hmm-insetMm)/sh.rows;
   const H=1200, W=Math.round(H*(cellW/cellH));                  // render size
+  const mmToPx=W/cellW;                                          // px per mm at this render scale
+  // Border is proportional (WB_RATIO of the page width) — matching the print and editor — so it reads like the
+  // 4.5mm-on-A4-8-page frame on every template/paper. W is this page's rendered width, so WB_RATIO*W is exact.
+  const border=state.whiteBorder ? Math.round(WB_RATIO*W) : 0;
   const total=state.pages.length;
   const out=[];
   for(let i=0;i<total;i++){
     const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
     const ctx=cv.getContext("2d");
     ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,H);
-    await renderPanelToCanvas(ctx, i, 0, 0, W, H);   // upright, no imposition rotation
+    // 2-page spread: draw the photo running INTO the fold (no inset on the fold side) and frame only the
+    // OUTER edges, so a spread reads as one continuous image with white around the outside — not a white
+    // stripe down the middle. Pages are upright here, so fold = right edge (spread) / left edge (spreadR).
+    const pgObj=state.pages[i];
+    let foldLocal=null;
+    if(pgObj && border>0){ if(pgObj.layout==="spread") foldLocal="R"; else if(pgObj.layout==="spreadR") foldLocal="L"; }
+    let bx=border, bw=W-border*2;
+    if(foldLocal==="R"){ bw=W-border; }
+    else if(foldLocal==="L"){ bx=0; bw=W-border; }
+    await renderPanelToCanvas(ctx, i, bx, border, bw, H-border*2);
+    if(border>0){
+      ctx.fillStyle="#fff";
+      ctx.fillRect(0,0,W,border); ctx.fillRect(0,H-border,W,border);
+      if(foldLocal!=="L") ctx.fillRect(0,0,border,H);
+      if(foldLocal!=="R") ctx.fillRect(W-border,0,border,H);
+    }
     out.push(cv.toDataURL("image/jpeg",0.9));
   }
   return {pages:out, aspect:W/H};                    // aspect = single reading-page W/H
@@ -2218,6 +2743,10 @@ async function openZineViewer(){
     frame.srcdoc=html;
     ov.classList.add("open");
     document.body.style.overflow="hidden";
+    // give the viewer iframe focus so ← → / space keyboard nav works immediately (keys only reach the iframe
+    // when it's focused — otherwise they go to the parent page and nothing turns)
+    frame.addEventListener("load",()=>{ try{ frame.contentWindow.focus(); }catch(_){} }, {once:true});
+    setTimeout(()=>{ try{ frame.focus(); frame.contentWindow.focus(); }catch(_){} }, 60);
   }catch(e){ console.error(e); toast("Viewer failed — see console"); }
   finally{ if(btn){ btn.textContent=orig; btn.disabled=false; } }
 }
@@ -2288,6 +2817,7 @@ function buildViewerHTML(title, pages, aspect){
     +'function next(){turn(1);}function prev(){turn(-1);}'
     +'document.getElementById("next").onclick=next;document.getElementById("prev").onclick=prev;'
     +'document.addEventListener("keydown",function(e){if(e.key==="ArrowRight"||e.key===" "){e.preventDefault();next();}else if(e.key==="ArrowLeft"){e.preventDefault();prev();}else if(e.key==="Home"){si=0;paint();}else if(e.key==="End"){si=spreads.length-1;paint();}else if(e.key==="Escape"){e.preventDefault();try{window.parent.postMessage("zv-close","*");}catch(_){}}});'
+    +'window.addEventListener("message",function(e){var d=e.data;if(d&&d.zv==="key"){if(d.key==="ArrowRight"||d.key===" ")next();else if(d.key==="ArrowLeft")prev();}});'
     // click or drag to turn: small movement = click (right half=next, left half=back); big movement = drag (dir by dx)
     +'var down=false,sx0=0;'
     +'stage.addEventListener("pointerdown",function(e){if(animating)return;down=true;sx0=e.clientX;e.preventDefault();});'
@@ -2577,6 +3107,16 @@ async function deleteTemplate(id){
 document.getElementById("delTplBtn").onclick=()=>deleteTemplate(state.format);
 document.getElementById("paper").onchange=(e)=>{ state.paper=e.target.value; save(); renderEditor(); };
 document.getElementById("cropMarks").onchange=(e)=>{ state.cropMarks=(e.target.value==="on"); save(); };
+document.getElementById("whiteBorder").onchange=(e)=>{ setWhiteBorder(e.target.value==="on"); };
+function setWhiteBorder(on){
+  state.whiteBorder=!!on;
+  var sel=document.getElementById("whiteBorder"); if(sel) sel.value=state.whiteBorder?"on":"off";
+  var btn=document.getElementById("whiteBorderBtn");
+  if(btn) btn.setAttribute("aria-pressed",state.whiteBorder?"true":"false");
+  save(); renderEditor();
+}
+var wbBtn=document.getElementById("whiteBorderBtn");
+if(wbBtn) wbBtn.onclick=()=>setWhiteBorder(!state.whiteBorder);
 // editor visual zoom (does NOT touch print/download size)
 function applyEditZoom(){
   const z=Math.min(1.4,Math.max(0.7,state.editZoom||1));
@@ -2586,8 +3126,8 @@ function applyEditZoom(){
 }
 function setEditZoom(z){ state.editZoom=Math.min(1.4,Math.max(0.7,Math.round(z*100)/100)); applyEditZoom(); save(); }
 document.getElementById("editZoom").oninput=(e)=>setEditZoom(parseFloat(e.target.value));
-document.getElementById("zoomMinus").onclick=()=>setEditZoom((state.editZoom||1)-0.1);
-document.getElementById("zoomPlus").onclick=()=>setEditZoom((state.editZoom||1)+0.1);
+var _zm=document.getElementById("zoomMinus"); if(_zm) _zm.onclick=()=>setEditZoom((state.editZoom||1)-0.1);
+var _zp=document.getElementById("zoomPlus"); if(_zp) _zp.onclick=()=>setEditZoom((state.editZoom||1)+0.1);
 // undo / redo
 document.getElementById("undoBtn").onclick=undo;
 document.getElementById("redoBtn").onclick=redo;
@@ -2693,6 +3233,7 @@ document.getElementById("deflayout").onchange=(e)=>{
   let changed=0;
   state.pages.forEach((p,i)=>{
     if(i===0||i===total-1) return;                 // skip covers
+    if(p.layout==="spread"||p.layout==="spreadR") return;  // don't disturb a 2-page spread
     const empty=!p.imgs||(!p.imgs[0]&&!p.imgs[1]); // only untouched cells
     if(empty && p.layout!==v){ p.layout=v; changed++; }
   });
@@ -2711,7 +3252,13 @@ document.getElementById("dlClose").onclick=()=>{ document.getElementById("dlOver
 // preview overlay buttons
 document.getElementById("pvClose").onclick=()=>{ document.getElementById("pvOverlay").style.display="none"; };
 document.getElementById("pvOverlay").addEventListener("click",(e)=>{ if(e.target.id==="pvOverlay") e.currentTarget.style.display="none"; });
-document.addEventListener("keydown",(e)=>{ if(e.key!=="Escape") return; const zv=document.getElementById("zvOverlay"); if(zv&&zv.classList.contains("open")){ closeZineViewer(); return; } const pv=document.getElementById("pvOverlay"), dl=document.getElementById("dlOverlay"); if(pv&&pv.style.display!=="none"&&pv.style.display!==""){ pv.style.display="none"; } else if(dl&&dl.style.display!=="none"&&dl.style.display!==""){ dl.style.display="none"; } });
+document.addEventListener("keydown",(e)=>{
+  const zv=document.getElementById("zvOverlay");
+  // when the viewer is open, forward page-turn keys to the iframe (in case it doesn't have focus)
+  if(zv&&zv.classList.contains("open")){
+    if(e.key==="ArrowRight"||e.key==="ArrowLeft"||e.key===" "){ e.preventDefault(); const fr=document.getElementById("zvFrame"); try{ fr.contentWindow.postMessage({zv:"key",key:e.key},"*"); }catch(_){} return; }
+  }
+  if(e.key!=="Escape") return; if(zv&&zv.classList.contains("open")){ closeZineViewer(); return; } const pv=document.getElementById("pvOverlay"), dl=document.getElementById("dlOverlay"); if(pv&&pv.style.display!=="none"&&pv.style.display!==""){ pv.style.display="none"; } else if(dl&&dl.style.display!=="none"&&dl.style.display!==""){ dl.style.display="none"; } });
 document.getElementById("pvSavePdf").onclick=()=>savePreviewPDF();
 document.getElementById("pvSaveZip").onclick=()=>savePreviewZip();
 document.getElementById("saveZineBtn").onclick=()=>saveZineHTML();
@@ -2924,6 +3471,8 @@ function safeRenderAll(){
   rebuildFormatDropdown();
   var pv=document.getElementById("paper"); if(pv) pv.value=state.paper;
   var cm=document.getElementById("cropMarks"); if(cm) cm.value=state.cropMarks?"on":"off";
+  var wb=document.getElementById("whiteBorder"); if(wb) wb.value=state.whiteBorder?"on":"off";
+  var wbb=document.getElementById("whiteBorderBtn"); if(wbb) wbb.setAttribute("aria-pressed",state.whiteBorder?"true":"false");
   applyEditZoom();
   updateNudgeReadout();
   ensurePages();
